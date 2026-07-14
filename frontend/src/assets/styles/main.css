@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --veloai-radius-sm: 6px;
+    --veloai-radius-md: 10px;
+    --veloai-radius-lg: 14px;
+    --veloai-radius-xl: 20px;
+  }
+
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background-light text-text-primary antialiased;
+    @apply dark:bg-background-dark dark:text-white;
+  }
+}

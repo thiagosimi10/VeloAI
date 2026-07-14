@@ -1,0 +1,63 @@
+name: Security
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  python-security:
+    name: python-security-${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [shared, backend, provisioning, ai-gateway]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Instalar Bandit e pip-audit
+        run: pip install bandit pip-audit
+
+      - name: Bandit (${{ matrix.service }})
+        working-directory: ${{ matrix.service }}
+        run: bandit -r . -x ./tests,./alembic_master,./alembic_tenant
+
+      - name: pip-audit (${{ matrix.service }})
+        working-directory: ${{ matrix.service }}
+        run: |
+          if [ -f requirements.txt ]; then
+            pip-audit -r requirements.txt --skip-editable
+          else
+            pip-audit --local
+          fi
+
+  frontend-security:
+    name: npm-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci
+
+      - name: npm audit (dependências de produção)
+        working-directory: frontend
+        # Vulnerabilidades em devDependencies (ex.: cadeia vite/vitest/esbuild do
+        # servidor de desenvolvimento) são monitoradas via Dependabot, mas não bloqueiam
+        # o CI nesta fase — nenhuma delas é incluída no bundle de produção.
+        run: npm audit --audit-level=high --omit=dev

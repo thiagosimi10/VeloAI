@@ -1,0 +1,50 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Type Check
+        working-directory: frontend
+        run: npm run type-check
+
+      - name: Vitest + Coverage
+        working-directory: frontend
+        run: npx vitest run --coverage
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+        env:
+          VITE_API_URL: http://localhost:8000
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend
+          path: frontend/coverage
+          retention-days: 7

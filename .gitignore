@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+coverage/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+!*/.env.example
+
+# Docker
+*.pid
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Data volumes (local dev)
+infra/postgres/data/
+infra/minio/data/
