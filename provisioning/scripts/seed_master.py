@@ -13,10 +13,10 @@ import asyncio
 from decimal import Decimal
 
 from sqlalchemy import select
+from veloai_shared.schema.master import Plan
 
 from app.core.database import get_master_session
 from app.core.logging import configure_logging, get_logger
-from app.models.master import Plan
 
 configure_logging(service_name="provisioning-seed-master")
 logger = get_logger(__name__)

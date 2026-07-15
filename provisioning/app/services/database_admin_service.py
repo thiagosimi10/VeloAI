@@ -11,9 +11,10 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import get_settings
-from app.core.database import get_maintenance_engine
+from app.core.database import get_maintenance_engine, get_master_engine
 
 _VALID_DATABASE_NAME = re.compile(r"^[a-z][a-z0-9_]{2,62}$")
 _PROVISIONING_ROOT = Path(__file__).resolve().parents[2]
@@ -60,6 +61,73 @@ class DatabaseAdminService:
         config = self._build_alembic_config("alembic_master")
         config.attributes["sqlalchemy_url"] = self._settings.database_master_url
         command.upgrade(config, "head")
+
+    async def grant_app_role_privileges(self, database_name: str) -> None:
+        """Concede à role `veloai_app` (usada exclusivamente pelo Backend) os
+        privilégios mínimos no banco recém-criado do tenant. O Backend nunca autentica
+        como a role administrativa (29-SECURITY.md)."""
+
+        self._assert_valid_name(database_name)
+        app_role = self._settings.postgres_app_user
+
+        maintenance_engine = get_maintenance_engine()
+        async with maintenance_engine.connect() as connection:
+            await connection.execute(
+                text(f'GRANT CONNECT ON DATABASE "{database_name}" TO "{app_role}"')
+            )
+
+        tenant_engine = create_async_engine(self._settings.tenant_database_url(database_name))
+        try:
+            async with tenant_engine.connect() as connection:
+                await connection.execute(text(f'GRANT USAGE ON SCHEMA public TO "{app_role}"'))
+                await connection.execute(
+                    text(
+                        "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public "
+                        f'TO "{app_role}"'
+                    )
+                )
+                await connection.execute(
+                    text(
+                        "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                        f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{app_role}"'
+                    )
+                )
+                await connection.commit()
+        finally:
+            await tenant_engine.dispose()
+
+    async def grant_app_role_privileges_on_master(self) -> None:
+        """Concede à role `veloai_app` os privilégios mínimos no Banco Master (tabelas
+        de leitura para roteamento de login, ex. `tenant_user_index`). Idempotente —
+        chamado uma vez após `run_master_migrations()`."""
+
+        app_role = self._settings.postgres_app_user
+
+        maintenance_engine = get_maintenance_engine()
+        async with maintenance_engine.connect() as connection:
+            await connection.execute(
+                text(
+                    f'GRANT CONNECT ON DATABASE "{self._settings.postgres_master_db}" '
+                    f'TO "{app_role}"'
+                )
+            )
+
+        master_engine = get_master_engine()
+        async with master_engine.connect() as connection:
+            await connection.execute(text(f'GRANT USAGE ON SCHEMA public TO "{app_role}"'))
+            await connection.execute(
+                text(
+                    "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public "
+                    f'TO "{app_role}"'
+                )
+            )
+            await connection.execute(
+                text(
+                    "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
+                    f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{app_role}"'
+                )
+            )
+            await connection.commit()
 
     @staticmethod
     def _build_alembic_config(section: str) -> Config:

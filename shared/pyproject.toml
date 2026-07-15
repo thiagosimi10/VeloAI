@@ -9,6 +9,8 @@ dependencies = [
     "structlog>=24.4",
     "argon2-cffi>=23.1",
     "uuid_utils>=0.9",
+    "sqlalchemy>=2.0",
+    "PyJWT>=2.9",
 ]
 
 [project.optional-dependencies]

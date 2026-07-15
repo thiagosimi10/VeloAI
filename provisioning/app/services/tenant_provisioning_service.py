@@ -11,12 +11,12 @@ import asyncio
 import uuid
 
 from veloai_shared.exceptions import ConflictError
+from veloai_shared.schema.master import Tenant, TenantStatus
 from veloai_shared.security import new_uuid7, short_id
 
 from app.core.config import get_settings
 from app.core.database import get_master_session
 from app.core.logging import get_logger
-from app.models.master import Tenant, TenantStatus
 from app.repositories.tenant_repository import TenantRepository
 from app.schemas.tenant import (
     CreateTenantRequest,
@@ -76,6 +76,7 @@ class TenantProvisioningService:
             try:
                 await self._db_admin.create_database(database_name)
                 await asyncio.to_thread(self._db_admin.run_tenant_migrations, database_name)
+                await self._db_admin.grant_app_role_privileges(database_name)
                 seed_result = await self._seed.seed(
                     database_name=database_name,
                     legal_name=payload.legal_name,
@@ -97,6 +98,9 @@ class TenantProvisioningService:
                 raise
 
             await repository.update_status(tenant, TenantStatus.ACTIVE)
+            await repository.add_user_index(
+                email=seed_result.admin_email, tenant_id=tenant_id
+            )
             await repository.add_audit_log(
                 tenant_id=tenant_id,
                 action="TENANT_PROVISIONING_FINISHED",

@@ -8,8 +8,7 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.master import AuditLog, Tenant, TenantStatus
+from veloai_shared.schema.master import AuditLog, Tenant, TenantStatus, TenantUserIndex
 
 
 class TenantRepository:
@@ -33,6 +32,15 @@ class TenantRepository:
         tenant.status = status.value
         await self._session.flush()
         return tenant
+
+    async def add_user_index(self, *, email: str, tenant_id: uuid.UUID) -> TenantUserIndex:
+        """Registra a entrada de roteamento de login (e-mail → tenant) no Banco Master,
+        conforme o fluxo obrigatório de 04-MULTI-TENANCY.md."""
+
+        entry = TenantUserIndex(email=email, tenant_id=tenant_id)
+        self._session.add(entry)
+        await self._session.flush()
+        return entry
 
     async def add_audit_log(
         self,

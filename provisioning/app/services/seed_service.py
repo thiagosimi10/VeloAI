@@ -10,9 +10,8 @@ import uuid
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-from app.core.config import get_settings
-from app.models.tenant_template import (
+from veloai_shared.permissions_catalog import DEFAULT_ADMIN_PERMISSIONS
+from veloai_shared.schema.tenant import (
     Company,
     TenantPermission,
     TenantRole,
@@ -20,6 +19,8 @@ from app.models.tenant_template import (
     TenantUser,
 )
 from veloai_shared.security import hash_password
+
+from app.core.config import get_settings
 
 
 @dataclass(frozen=True)
@@ -62,11 +63,13 @@ class TenantSeedService:
                 session.add(role)
                 await session.flush()
 
-                permission = TenantPermission(module="system", action="admin")
-                session.add(permission)
-                await session.flush()
-
-                session.add(TenantRolePermission(role_id=role.id, permission_id=permission.id))
+                for module, action in DEFAULT_ADMIN_PERMISSIONS:
+                    permission = TenantPermission(module=module, action=action)
+                    session.add(permission)
+                    await session.flush()
+                    session.add(
+                        TenantRolePermission(role_id=role.id, permission_id=permission.id)
+                    )
 
                 first_name, _, last_name = admin_name.strip().partition(" ")
                 admin_user = TenantUser(

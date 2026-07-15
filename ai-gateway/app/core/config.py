@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     ai_temperature: float = 0.2
     ai_max_tokens: int = 8192
 
+    redis_url: str = "redis://redis:6379/0"
+    ai_cache_ttl_seconds: int = 3600
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -12,6 +12,12 @@ const router = createRouter({
       meta: { layout: 'auth', requiresAuth: false },
     },
     {
+      path: '/change-password',
+      name: 'change-password',
+      component: () => import('@/views/ChangePasswordView.vue'),
+      meta: { layout: 'auth', requiresAuth: true },
+    },
+    {
       path: '/',
       redirect: '/dashboard',
     },
@@ -19,6 +25,180 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/customers',
+      name: 'customers',
+      component: () => import('@/views/customers/CustomersListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/customers/new',
+      name: 'customers-new',
+      component: () => import('@/views/customers/CustomerFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/customers/:id/edit',
+      name: 'customers-edit',
+      component: () => import('@/views/customers/CustomerFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/suppliers',
+      name: 'suppliers',
+      component: () => import('@/views/suppliers/SuppliersListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/suppliers/new',
+      name: 'suppliers-new',
+      component: () => import('@/views/suppliers/SupplierFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/suppliers/:id/edit',
+      name: 'suppliers-edit',
+      component: () => import('@/views/suppliers/SupplierFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/categories',
+      name: 'categories',
+      component: () => import('@/views/categories/CategoriesListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/categories/new',
+      name: 'categories-new',
+      component: () => import('@/views/categories/CategoryFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/categories/:id/edit',
+      name: 'categories-edit',
+      component: () => import('@/views/categories/CategoryFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/products',
+      name: 'products',
+      component: () => import('@/views/products/ProductsListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/products/new',
+      name: 'products-new',
+      component: () => import('@/views/products/ProductFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/products/:id/edit',
+      name: 'products-edit',
+      component: () => import('@/views/products/ProductFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/products/:id/stock',
+      name: 'products-stock',
+      component: () => import('@/views/products/ProductStockView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/services',
+      name: 'services',
+      component: () => import('@/views/services/ServicesListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/services/new',
+      name: 'services-new',
+      component: () => import('@/views/services/ServiceFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/services/:id/edit',
+      name: 'services-edit',
+      component: () => import('@/views/services/ServiceFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/service-orders',
+      name: 'service-orders',
+      component: () => import('@/views/serviceOrders/ServiceOrdersListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/service-orders/new',
+      name: 'service-orders-new',
+      component: () => import('@/views/serviceOrders/ServiceOrderFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/service-orders/:id',
+      name: 'service-orders-detail',
+      component: () => import('@/views/serviceOrders/ServiceOrderDetailView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/sales',
+      name: 'sales',
+      component: () => import('@/views/sales/SalesListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/sales/new',
+      name: 'sales-new',
+      component: () => import('@/views/sales/SaleFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/sales/:id',
+      name: 'sales-detail',
+      component: () => import('@/views/sales/SaleDetailView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/accounts-receivable',
+      name: 'accounts-receivable',
+      component: () => import('@/views/finance/AccountsReceivableListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/accounts-receivable/new',
+      name: 'accounts-receivable-new',
+      component: () => import('@/views/finance/AccountReceivableFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/accounts-receivable/:id',
+      name: 'accounts-receivable-detail',
+      component: () => import('@/views/finance/AccountReceivableDetailView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/accounts-payable',
+      name: 'accounts-payable',
+      component: () => import('@/views/finance/AccountsPayableListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/accounts-payable/new',
+      name: 'accounts-payable-new',
+      component: () => import('@/views/finance/AccountPayableFormView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/accounts-payable/:id',
+      name: 'accounts-payable-detail',
+      component: () => import('@/views/finance/AccountPayableDetailView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/cash-flow',
+      name: 'cash-flow',
+      component: () => import('@/views/finance/CashFlowView.vue'),
       meta: { layout: 'default', requiresAuth: true },
     },
     {
@@ -30,11 +210,29 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
+
+  // Restaura a sessão a partir do cookie HttpOnly uma única vez por carregamento da
+  // aplicação (o estado do Pinia é perdido a cada reload de página).
+  if (!authStore.isBootstrapped) {
+    await authStore.fetchCurrentUser()
+  }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (to.name === 'login' && authStore.isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+
+  if (
+    authStore.isAuthenticated &&
+    authStore.user?.mustChangePassword &&
+    to.name !== 'change-password'
+  ) {
+    return { name: 'change-password' }
   }
 
   return true

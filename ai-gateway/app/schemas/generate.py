@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from pydantic import BaseModel, Field
 
 
@@ -15,3 +17,5 @@ class GenerateResponse(BaseModel):
     model: str
     input_tokens: int
     output_tokens: int
+    cached: bool
+    estimated_cost: Decimal

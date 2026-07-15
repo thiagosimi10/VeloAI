@@ -60,6 +60,20 @@ class PermissionDeniedError(AppException):
     code = "PERMISSION_DENIED"
 
 
+class AuthenticationError(AppException):
+    """Credenciais ausentes, inválidas ou token expirado/malformado — usuário ainda não
+    autenticado (diferente de `PermissionDeniedError`, que é para usuários autenticados
+    sem permissão suficiente)."""
+
+    status_code = status.HTTP_401_UNAUTHORIZED
+    code = "AUTHENTICATION_ERROR"
+
+
+class RateLimitedError(AppException):
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    code = "RATE_LIMITED"
+
+
 def _error_body(message: str, code: str, errors: list[dict[str, Any]]) -> dict[str, Any]:
     return ErrorResponse(
         message=message,

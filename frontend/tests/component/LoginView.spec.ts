@@ -50,7 +50,17 @@ describe('LoginView', () => {
 
   it('redirects to dashboard after a successful login', async () => {
     vi.mocked(http.post).mockResolvedValueOnce({
-      data: { data: { access_token: 'fake-token' } },
+      data: {
+        data: {
+          id: 'user-1',
+          email: 'user@empresa.com',
+          first_name: 'Maria',
+          last_name: 'Souza',
+          role: 'Administrador',
+          permissions: ['system.admin'],
+          must_change_password: false,
+        },
+      },
     })
     const router = buildRouter()
     router.push('/login')

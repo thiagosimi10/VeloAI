@@ -1,14 +1,28 @@
 <script setup lang="ts">
-import { Bell, Moon, Search, Sparkles, Sun } from 'lucide-vue-next'
-import { onMounted } from 'vue'
+import { Bell, LogOut, Moon, Search, Sparkles, Sun } from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
+import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
+const router = useRouter()
+
+const isUserMenuOpen = ref(false)
 
 onMounted(() => {
   themeStore.initialize()
 })
+
+const userInitial = computed(() => authStore.user?.firstName.charAt(0).toUpperCase() ?? '?')
+
+async function handleLogout(): Promise<void> {
+  isUserMenuOpen.value = false
+  await authStore.logout()
+  await router.push({ name: 'login' })
+}
 </script>
 
 <template>
@@ -51,10 +65,37 @@ onMounted(() => {
         <Moon v-else :size="20" />
       </button>
 
-      <div
-        class="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
-      >
-        V
+      <div class="relative">
+        <button
+          type="button"
+          aria-label="Menu do usuário"
+          class="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+          @click="isUserMenuOpen = !isUserMenuOpen"
+        >
+          {{ userInitial }}
+        </button>
+
+        <div
+          v-if="isUserMenuOpen"
+          class="absolute right-0 top-11 z-10 w-56 rounded-md border border-black/10 bg-surface-light p-2 shadow-lg dark:border-white/10 dark:bg-surface-dark"
+        >
+          <div class="px-2 py-1.5">
+            <p class="truncate text-sm font-medium text-text-primary dark:text-white">
+              {{ authStore.user?.firstName }} {{ authStore.user?.lastName }}
+            </p>
+            <p class="truncate text-xs text-text-secondary">{{ authStore.user?.email }}</p>
+          </div>
+          <hr class="my-1 border-black/10 dark:border-white/10" />
+          <button
+            type="button"
+            data-testid="logout-button"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-text-primary hover:bg-black/5 dark:text-white dark:hover:bg-white/10"
+            @click="handleLogout"
+          >
+            <LogOut :size="16" />
+            Sair
+          </button>
+        </div>
       </div>
     </div>
   </header>

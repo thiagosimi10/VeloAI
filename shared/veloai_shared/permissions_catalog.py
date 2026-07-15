@@ -1,0 +1,59 @@
+"""Catálogo de permissões concedidas ao papel Administrador de todo novo tenant,
+conforme 02-ARQUITETURA.md ("Permissões: RBAC") e o padrão `<módulo>.<ação>` de
+20-MCP-TOOLS.md/22-API-STANDARDS.md.
+
+Único lugar onde essa lista é mantida — o Provisioning Service a usa para semear cada
+tenant novo, e os testes de integração do Backend a reaproveitam para montar um cenário
+de teste fiel ao que um tenant real recebe. Ao adicionar um módulo de negócio novo,
+basta acrescentar suas permissões aqui."""
+
+from __future__ import annotations
+
+DEFAULT_ADMIN_PERMISSIONS: list[tuple[str, str]] = [
+    ("system", "admin"),
+    ("customers", "view"),
+    ("customers", "create"),
+    ("customers", "update"),
+    ("customers", "delete"),
+    ("suppliers", "view"),
+    ("suppliers", "create"),
+    ("suppliers", "update"),
+    ("suppliers", "delete"),
+    ("categories", "view"),
+    ("categories", "create"),
+    ("categories", "update"),
+    ("categories", "delete"),
+    ("products", "view"),
+    ("products", "create"),
+    ("products", "update"),
+    ("products", "delete"),
+    ("services", "view"),
+    ("services", "create"),
+    ("services", "update"),
+    ("services", "delete"),
+    ("stock", "view"),
+    ("stock", "adjust"),
+    ("service_orders", "view"),
+    ("service_orders", "create"),
+    ("service_orders", "update"),
+    ("service_orders", "delete"),
+    ("service_orders", "close"),
+    ("service_orders", "cancel"),
+    ("users", "view"),
+    ("sales", "view"),
+    ("sales", "create"),
+    ("sales", "update"),
+    ("sales", "complete"),
+    ("sales", "cancel"),
+    ("finance", "view"),
+    ("finance", "create"),
+    ("finance", "update"),
+    ("finance", "receive"),
+    ("finance", "pay"),
+    ("finance", "cancel"),
+    ("dashboard", "view"),
+    ("attachments", "view"),
+    ("attachments", "upload"),
+    ("attachments", "delete"),
+    ("ai", "use"),
+]

@@ -1,0 +1,114 @@
+"""Controller do módulo de Categorias. Responsabilidade: receber requisição, validar
+permissão via `require_permission` e delegar ao Use Case — nunca conter regra de
+negócio (00-AI-CONSTITUTION.md)."""
+
+from __future__ import annotations
+
+import uuid
+
+from fastapi import APIRouter, Depends
+from veloai_shared.responses import SuccessResponse
+
+from app.core.database import TenantConnectionManager, get_tenant_connection_manager
+from app.core.dependencies import CurrentUser, require_permission
+from app.modules.categories.permissions import (
+    CATEGORIES_CREATE,
+    CATEGORIES_DELETE,
+    CATEGORIES_UPDATE,
+    CATEGORIES_VIEW,
+)
+from app.modules.categories.schemas.category import (
+    CategoryFilterParams,
+    CategoryResponse,
+    CreateCategoryRequest,
+    UpdateCategoryRequest,
+)
+from app.modules.categories.use_cases.create_category_use_case import CreateCategoryUseCase
+from app.modules.categories.use_cases.delete_category_use_case import DeleteCategoryUseCase
+from app.modules.categories.use_cases.get_category_use_case import GetCategoryUseCase
+from app.modules.categories.use_cases.list_categories_use_case import ListCategoriesUseCase
+from app.modules.categories.use_cases.update_category_use_case import UpdateCategoryUseCase
+
+router = APIRouter(prefix="/categories", tags=["categories"])
+
+
+@router.get("")
+async def list_categories(
+    filters: CategoryFilterParams = Depends(),
+    current_user: CurrentUser = Depends(require_permission(CATEGORIES_VIEW)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[list[CategoryResponse]]:
+    use_case = ListCategoriesUseCase(connection_manager=connection_manager)
+    result = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        filters=filters,
+    )
+    return SuccessResponse(
+        message="Categorias listadas com sucesso.", data=result.items, meta=result.meta
+    )
+
+
+@router.get("/{category_id}")
+async def get_category(
+    category_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_permission(CATEGORIES_VIEW)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[CategoryResponse]:
+    use_case = GetCategoryUseCase(connection_manager=connection_manager)
+    category = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        category_id=category_id,
+    )
+    return SuccessResponse(message="Categoria encontrada.", data=category)
+
+
+@router.post("", status_code=201)
+async def create_category(
+    payload: CreateCategoryRequest,
+    current_user: CurrentUser = Depends(require_permission(CATEGORIES_CREATE)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[CategoryResponse]:
+    use_case = CreateCategoryUseCase(connection_manager=connection_manager)
+    category = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        actor_user_id=current_user.user_id,
+        payload=payload,
+    )
+    return SuccessResponse(message="Categoria criada com sucesso.", data=category)
+
+
+@router.patch("/{category_id}")
+async def update_category(
+    category_id: uuid.UUID,
+    payload: UpdateCategoryRequest,
+    current_user: CurrentUser = Depends(require_permission(CATEGORIES_UPDATE)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[CategoryResponse]:
+    use_case = UpdateCategoryUseCase(connection_manager=connection_manager)
+    category = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        actor_user_id=current_user.user_id,
+        category_id=category_id,
+        payload=payload,
+    )
+    return SuccessResponse(message="Categoria atualizada com sucesso.", data=category)
+
+
+@router.delete("/{category_id}")
+async def delete_category(
+    category_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_permission(CATEGORIES_DELETE)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[dict[str, str]]:
+    use_case = DeleteCategoryUseCase(connection_manager=connection_manager)
+    await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        actor_user_id=current_user.user_id,
+        category_id=category_id,
+    )
+    return SuccessResponse(message="Categoria excluída com sucesso.", data={})

@@ -89,8 +89,17 @@ async def test_embeddings_not_implemented_yet() -> None:
         await provider.embeddings(["texto"])
 
 
-def test_estimate_cost_not_implemented_yet() -> None:
+def test_estimate_cost_scales_with_token_counts() -> None:
     provider = GeminiProvider(api_key="fake-key", model=_MODEL)
 
-    with pytest.raises(NotImplementedError):
-        provider.estimate_cost(10, 10)
+    cost_small = provider.estimate_cost(1000, 1000)
+    cost_large = provider.estimate_cost(2000, 2000)
+
+    assert cost_small > 0
+    assert cost_large == cost_small * 2
+
+
+def test_estimate_cost_zero_tokens_is_zero() -> None:
+    provider = GeminiProvider(api_key="fake-key", model=_MODEL)
+
+    assert provider.estimate_cost(0, 0) == 0

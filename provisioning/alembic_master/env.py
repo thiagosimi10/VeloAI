@@ -13,8 +13,9 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from veloai_shared.schema.master import MasterBase
+
 from app.core.config import get_settings
-from app.models.master import MasterBase
 
 config = context.config
 

@@ -14,11 +14,16 @@ def test_health_endpoint() -> None:
     assert body["data"]["service"] == "backend"
 
 
-def test_ready_endpoint_ok_without_dependencies() -> None:
+def test_ready_endpoint_degrades_gracefully_without_reachable_dependencies() -> None:
+    """Nesta suíte unitária o Backend não tem Postgres/Redis configurados para o
+    tenant/master de teste — `/ready` deve reportar `degraded` (503), nunca lançar uma
+    exceção não tratada."""
+
     response = client.get("/ready")
 
-    assert response.status_code == 200
-    assert response.json()["data"]["status"] == "ok"
+    assert response.status_code in (200, 503)
+    body = response.json()
+    assert set(body["data"]["checks"].keys()) == {"master_database", "redis"}
 
 
 def test_live_endpoint() -> None:

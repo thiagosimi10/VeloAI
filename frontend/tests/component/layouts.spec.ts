@@ -9,7 +9,19 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue'
 function buildRouter() {
   return createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/dashboard', name: 'dashboard', component: { template: '<div />' } }],
+    routes: [
+      { path: '/dashboard', name: 'dashboard', component: { template: '<div />' } },
+      { path: '/customers', name: 'customers', component: { template: '<div />' } },
+      { path: '/suppliers', name: 'suppliers', component: { template: '<div />' } },
+      { path: '/categories', name: 'categories', component: { template: '<div />' } },
+      { path: '/products', name: 'products', component: { template: '<div />' } },
+      { path: '/services', name: 'services', component: { template: '<div />' } },
+      { path: '/service-orders', name: 'service-orders', component: { template: '<div />' } },
+      { path: '/sales', name: 'sales', component: { template: '<div />' } },
+      { path: '/accounts-receivable', name: 'accounts-receivable', component: { template: '<div />' } },
+      { path: '/accounts-payable', name: 'accounts-payable', component: { template: '<div />' } },
+      { path: '/cash-flow', name: 'cash-flow', component: { template: '<div />' } },
+    ],
   })
 }
 

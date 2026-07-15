@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     postgres_user: str = "veloai_admin"
     postgres_password: str = "change-me-in-production"
     postgres_maintenance_db: str = "postgres"
+    postgres_master_db: str = "veloai_master"
+    # Role usada exclusivamente pelo Backend para acessar bancos (Master e de tenant).
+    # O Provisioning nunca autentica como esta role — apenas concede privilégios a ela
+    # (18-DATABASE-02, "Criar usuário veloai_app... Nunca utilizar usuário postgres na
+    # aplicação").
+    postgres_app_user: str = "veloai_app"
 
     database_master_url: str = (
         "postgresql+asyncpg://veloai_admin:change-me-in-production@postgres:5432/veloai_master"

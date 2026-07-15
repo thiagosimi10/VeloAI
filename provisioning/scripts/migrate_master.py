@@ -6,6 +6,8 @@ Uso:
 
 from __future__ import annotations
 
+import asyncio
+
 from app.core.logging import configure_logging, get_logger
 from app.services.database_admin_service import DatabaseAdminService
 
@@ -15,7 +17,9 @@ logger = get_logger(__name__)
 
 def main() -> None:
     logger.info("migrate_master_started")
-    DatabaseAdminService().run_master_migrations()
+    admin_service = DatabaseAdminService()
+    admin_service.run_master_migrations()
+    asyncio.run(admin_service.grant_app_role_privileges_on_master())
     logger.info("migrate_master_finished")
 
 

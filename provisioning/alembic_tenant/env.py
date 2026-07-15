@@ -14,7 +14,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from app.models.tenant_template import TenantBase
+from veloai_shared.schema.tenant import TenantBase
 
 config = context.config
 

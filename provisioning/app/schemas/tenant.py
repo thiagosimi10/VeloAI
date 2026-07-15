@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
-import re
 import uuid
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from veloai_shared.validators import normalize_document
 
 
 class CreateTenantRequest(BaseModel):
@@ -19,10 +19,7 @@ class CreateTenantRequest(BaseModel):
     @field_validator("document")
     @classmethod
     def validate_document(cls, value: str) -> str:
-        digits = re.sub(r"\D", "", value)
-        if len(digits) not in (11, 14):
-            raise ValueError("Documento deve ser um CPF (11 dígitos) ou CNPJ (14 dígitos).")
-        return digits
+        return normalize_document(value)
 
 
 class TenantResponse(BaseModel):

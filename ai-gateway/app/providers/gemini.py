@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -10,6 +11,12 @@ import httpx
 from app.providers.base import AIProvider, GenerateResult
 
 _GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+
+# Preços aproximados por 1K tokens do gemini-3.1-flash-lite, apenas para estimativa —
+# não é fatura real (integração de cobrança de verdade é uma fase própria, ver
+# docs/31-BILLING.md). Ajustar caso o modelo configurado mude de faixa de preço.
+_PRICE_PER_1K_INPUT_TOKENS = Decimal("0.00010")
+_PRICE_PER_1K_OUTPUT_TOKENS = Decimal("0.00040")
 
 
 class GeminiProvider(AIProvider):
@@ -74,3 +81,8 @@ class GeminiProvider(AIProvider):
 
     async def list_models(self) -> list[str]:
         return [self._model]
+
+    def estimate_cost(self, input_tokens: int, output_tokens: int) -> Decimal:
+        input_cost = (Decimal(input_tokens) / 1000) * _PRICE_PER_1K_INPUT_TOKENS
+        output_cost = (Decimal(output_tokens) / 1000) * _PRICE_PER_1K_OUTPUT_TOKENS
+        return input_cost + output_cost

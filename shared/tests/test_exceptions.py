@@ -2,7 +2,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from veloai_shared.exceptions import ConflictError, NotFoundError, install_exception_handlers
+from veloai_shared.exceptions import (
+    AuthenticationError,
+    ConflictError,
+    NotFoundError,
+    RateLimitedError,
+    install_exception_handlers,
+)
 
 
 class _Payload(BaseModel):
@@ -20,6 +26,14 @@ def _build_app() -> FastAPI:
     @app.get("/conflict")
     async def _raise_conflict() -> None:
         raise ConflictError("Já existe um tenant com este documento.")
+
+    @app.get("/unauthenticated")
+    async def _raise_authentication_error() -> None:
+        raise AuthenticationError("E-mail ou senha inválidos.", code="INVALID_CREDENTIALS")
+
+    @app.get("/rate-limited")
+    async def _raise_rate_limited() -> None:
+        raise RateLimitedError("Muitas tentativas. Tente novamente mais tarde.")
 
     @app.get("/boom")
     async def _raise_unexpected() -> None:
@@ -52,6 +66,24 @@ def test_conflict_error_returns_409() -> None:
 
     assert response.status_code == 409
     assert response.json()["code"] == "CONFLICT"
+
+
+def test_authentication_error_returns_401() -> None:
+    client = TestClient(_build_app(), raise_server_exceptions=False)
+
+    response = client.get("/unauthenticated")
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "INVALID_CREDENTIALS"
+
+
+def test_rate_limited_error_returns_429() -> None:
+    client = TestClient(_build_app(), raise_server_exceptions=False)
+
+    response = client.get("/rate-limited")
+
+    assert response.status_code == 429
+    assert response.json()["code"] == "RATE_LIMITED"
 
 
 def test_unexpected_exception_never_leaks_traceback() -> None:

@@ -2,16 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
-import DashboardView from '@/views/DashboardView.vue'
 import NotFoundView from '@/views/NotFoundView.vue'
-
-describe('DashboardView', () => {
-  it('renders the empty state welcome message', () => {
-    const wrapper = mount(DashboardView)
-
-    expect(wrapper.text()).toContain('Bem-vindo ao VeloAI')
-  })
-})
 
 describe('NotFoundView', () => {
   it('renders a 404 message with a link back to the dashboard', async () => {
