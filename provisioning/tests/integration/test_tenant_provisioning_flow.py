@@ -3,11 +3,19 @@ migrations, seed e usuário administrador) e depois desfaz tudo."""
 
 from __future__ import annotations
 
+from qdrant_client import AsyncQdrantClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from veloai_shared.exceptions import ConflictError
 from veloai_shared.permissions_catalog import DEFAULT_ADMIN_PERMISSIONS
-from veloai_shared.schema.master import Tenant, TenantStatus, TenantUserIndex
+from veloai_shared.qdrant import collection_name_for_tenant
+from veloai_shared.schema.master import (
+    Subscription,
+    SubscriptionStatus,
+    Tenant,
+    TenantStatus,
+    TenantUserIndex,
+)
 from veloai_shared.schema.tenant import (
     TenantPermission,
     TenantRole,
@@ -19,6 +27,7 @@ from app.core.config import get_settings
 from app.core.database import get_master_session
 from app.schemas.tenant import CreateTenantRequest
 from app.services.database_admin_service import DatabaseAdminService
+from app.services.qdrant_provisioning_service import QdrantProvisioningService
 from app.services.tenant_provisioning_service import TenantProvisioningService
 
 from .conftest import APP_ROLE_TEST_PASSWORD
@@ -54,6 +63,16 @@ async def test_provision_creates_real_database_with_admin_user(master_database: 
             )
             index_entry = index_result.scalar_one()
             assert index_entry.tenant_id == result.tenant_id
+
+            assert master_row.plan_id is not None
+
+            subscription_result = await session.execute(
+                select(Subscription).where(Subscription.tenant_id == result.tenant_id)
+            )
+            subscription = subscription_result.scalar_one()
+            assert subscription.plan_id == master_row.plan_id
+            assert subscription.status == SubscriptionStatus.TRIAL.value
+            assert subscription.trial_ends_at is not None
 
         settings = get_settings()
         tenant_engine = create_async_engine(settings.tenant_database_url(result.database_name))
@@ -102,8 +121,18 @@ async def test_provision_creates_real_database_with_admin_user(master_database: 
                     assert app_role_result.scalar_one().email == "maria@assistenciasilva.test"
         finally:
             await app_role_engine.dispose()
+
+        # A Collection Qdrant do tenant deve existir de verdade (04-MULTI-TENANCY.md).
+        qdrant_client = AsyncQdrantClient(url=get_settings().qdrant_url)
+        try:
+            collections = await qdrant_client.get_collections()
+            names = {collection.name for collection in collections.collections}
+            assert collection_name_for_tenant(result.tenant_id) in names
+        finally:
+            await qdrant_client.close()
     finally:
         await DatabaseAdminService().drop_database(result.database_name)
+        await QdrantProvisioningService().delete_tenant_collection(result.tenant_id)
 
 
 async def test_provision_rejects_duplicate_document(master_database: None) -> None:
@@ -125,3 +154,4 @@ async def test_provision_rejects_duplicate_document(master_database: None) -> No
             assert exc.code == "TENANT_ALREADY_EXISTS"
     finally:
         await DatabaseAdminService().drop_database(result.database_name)
+        await QdrantProvisioningService().delete_tenant_collection(result.tenant_id)

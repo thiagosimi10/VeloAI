@@ -21,6 +21,7 @@ def get_provider(settings: Settings) -> AIProvider:
         return GeminiProvider(
             api_key=settings.gemini_api_key,
             model=settings.ai_report_model,
+            embedding_model=settings.ai_embedding_model,
             temperature=settings.ai_temperature,
             max_output_tokens=settings.ai_max_tokens,
         )

@@ -2,7 +2,9 @@
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  BookOpen,
   ClipboardList,
+  CreditCard,
   LayoutDashboard,
   Package,
   PanelLeftClose,
@@ -143,6 +145,24 @@ function toggleCollapsed(): void {
       >
         <Wallet :size="20" />
         <span v-if="!collapsed">Fluxo de Caixa</span>
+      </router-link>
+
+      <router-link
+        to="/knowledge"
+        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-black/5 dark:hover:bg-white/10"
+        active-class="bg-primary/10 text-primary"
+      >
+        <BookOpen :size="20" />
+        <span v-if="!collapsed">Base de Conhecimento</span>
+      </router-link>
+
+      <router-link
+        to="/billing"
+        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-black/5 dark:hover:bg-white/10"
+        active-class="bg-primary/10 text-primary"
+      >
+        <CreditCard :size="20" />
+        <span v-if="!collapsed">Assinatura</span>
       </router-link>
     </nav>
   </aside>

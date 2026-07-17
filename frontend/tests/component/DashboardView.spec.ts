@@ -1,10 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import PrimeVue from 'primevue/config'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
-import { VeloAIPreset } from '@/plugins/primevue-theme'
 import DashboardView from '@/views/DashboardView.vue'
 
 vi.mock('@/services/http', () => ({
@@ -110,7 +108,7 @@ describe('DashboardView', () => {
     await router.isReady()
 
     const wrapper = mount(DashboardView, {
-      global: { plugins: [router, [PrimeVue, { theme: { preset: VeloAIPreset } }]] },
+      global: { plugins: [router] },
     })
     await flushPromises()
     await wrapper.vm.$nextTick()
@@ -128,7 +126,7 @@ describe('DashboardView', () => {
     await router.isReady()
 
     const wrapper = mount(DashboardView, {
-      global: { plugins: [router, [PrimeVue, { theme: { preset: VeloAIPreset } }]] },
+      global: { plugins: [router] },
     })
     await flushPromises()
 
@@ -145,7 +143,7 @@ describe('DashboardView', () => {
     await router.isReady()
 
     const wrapper = mount(DashboardView, {
-      global: { plugins: [router, [PrimeVue, { theme: { preset: VeloAIPreset } }]] },
+      global: { plugins: [router] },
     })
     await flushPromises()
 
@@ -167,7 +165,7 @@ describe('DashboardView', () => {
     await router.isReady()
 
     const wrapper = mount(DashboardView, {
-      global: { plugins: [router, [PrimeVue, { theme: { preset: VeloAIPreset } }]] },
+      global: { plugins: [router] },
     })
     await flushPromises()
     await wrapper.vm.$nextTick()

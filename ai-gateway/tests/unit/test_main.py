@@ -113,7 +113,95 @@ def test_generate_endpoint_second_identical_call_is_served_from_cache(monkeypatc
     get_settings.cache_clear()
 
 
+def test_generate_endpoint_returns_function_call_when_gemini_requests_one(monkeypatch) -> None:
+    get_settings.cache_clear()
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    _use_fake_redis(monkeypatch)
+
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "gemini-3.1-flash-lite:generateContent"
+    )
+    with respx.mock:
+        respx.post(url).mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "candidates": [
+                        {
+                            "content": {
+                                "parts": [
+                                    {
+                                        "functionCall": {
+                                            "name": "CreateCustomer",
+                                            "args": {"name": "João Silva"},
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+            )
+        )
+        response = client.post(
+            "/generate",
+            json={
+                "prompt": "Cadastre um cliente chamado João Silva.",
+                "tools": [
+                    {
+                        "name": "CreateCustomer",
+                        "description": "Cadastra um novo cliente.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {"name": {"type": "string"}},
+                            "required": ["name"],
+                        },
+                    }
+                ],
+            },
+        )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["text"] is None
+    assert data["function_call"] == {"name": "CreateCustomer", "arguments": {"name": "João Silva"}}
+    get_settings.cache_clear()
+
+
 def test_generate_endpoint_rejects_empty_prompt() -> None:
     response = client.post("/generate", json={"prompt": ""})
+
+    assert response.status_code == 422
+
+
+def test_embeddings_endpoint_returns_standard_envelope(monkeypatch) -> None:
+    get_settings.cache_clear()
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "text-embedding-004:batchEmbedContents"
+    )
+    with respx.mock:
+        respx.post(url).mock(
+            return_value=httpx.Response(
+                200, json={"embeddings": [{"values": [0.1, 0.2]}, {"values": [0.3, 0.4]}]}
+            )
+        )
+        response = client.post(
+            "/embeddings", json={"texts": ["primeiro chunk", "segundo chunk"]}
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["embeddings"] == [[0.1, 0.2], [0.3, 0.4]]
+    assert body["data"]["model"] == "text-embedding-004"
+    get_settings.cache_clear()
+
+
+def test_embeddings_endpoint_rejects_empty_texts_list() -> None:
+    response = client.post("/embeddings", json={"texts": []})
 
     assert response.status_code == 422

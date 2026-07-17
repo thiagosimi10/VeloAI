@@ -17,9 +17,14 @@ from veloai_shared.exceptions import AuthenticationError, PermissionDeniedError
 from veloai_shared.security.jwt import TokenError
 
 from app.core.config import Settings, get_settings
-from app.core.database import TenantConnectionManager, get_tenant_connection_manager
+from app.core.database import (
+    TenantConnectionManager,
+    get_master_session,
+    get_tenant_connection_manager,
+)
 from app.modules.auth.repositories.user_repository import TenantUserRepository
 from app.modules.auth.services.token_service import TokenService
+from app.modules.billing.services.subscription_gate_service import ensure_subscription_active
 
 ACCESS_TOKEN_COOKIE_NAME = "access_token"
 REFRESH_TOKEN_COOKIE_NAME = "refresh_token"
@@ -94,3 +99,18 @@ def require_permission(
         return current_user
 
     return _dependency
+
+
+async def require_active_subscription(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> CurrentUser:
+    """Bloqueia o acesso de tenants com assinatura expirada/cancelada/suspensa,
+    conforme 31-BILLING.md. Aplicada por rota via `dependencies=[...]` em
+    `app/api/v1/router.py` — nunca em `auth_router` (login precisa sempre funcionar)
+    nem no próprio `billing_router` (o tenant precisa continuar enxergando/cancelando a
+    assinatura mesmo depois de bloqueado)."""
+
+    async with get_master_session() as session:
+        await ensure_subscription_active(session, current_user.tenant_id)
+
+    return current_user

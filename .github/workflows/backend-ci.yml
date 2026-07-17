@@ -38,6 +38,36 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # A imagem oficial minio/minio exige o argumento de linha de comando "server
+      # /data", que o schema de `services:` do GitHub Actions não permite passar (só
+      # image/env/ports/options — sem override de comando). bitnami/minio inicia como
+      # servidor usando só variáveis de ambiente, o padrão da comunidade para rodar
+      # MinIO como serviço de CI. Sem isso, test_attachments_flow.py (Fase 12) sempre
+      # pulava, até no CI.
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: veloai_minio
+          MINIO_ROOT_PASSWORD: change-me-in-production
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      # Sem configuração especial — mesma imagem/healthcheck do docker-compose.yml. Sem
+      # isso, test_knowledge_flow.py (Fase 15) e a suíte de integração do Provisioning
+      # (Fase 15/17) sempre pulavam, até no CI.
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+        options: >-
+          --health-cmd "curl -f http://localhost:6333/healthz"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     env:
       PYTHONPATH: .
@@ -47,6 +77,11 @@ jobs:
       POSTGRES_PASSWORD: postgres
       POSTGRES_MAINTENANCE_DB: postgres
       REDIS_URL: redis://localhost:6379/0
+      MINIO_ENDPOINT: localhost:9000
+      MINIO_ACCESS_KEY: veloai_minio
+      MINIO_SECRET_KEY: change-me-in-production
+      MINIO_USE_SSL: "false"
+      QDRANT_URL: http://localhost:6333
 
     steps:
       - uses: actions/checkout@v4

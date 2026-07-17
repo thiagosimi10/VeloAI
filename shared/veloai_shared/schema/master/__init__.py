@@ -6,6 +6,7 @@ o índice de roteamento de login, conforme 04-MULTI-TENANCY.md e o apêndice
 from veloai_shared.schema.master.audit_log import AuditLog
 from veloai_shared.schema.master.base import MasterBase
 from veloai_shared.schema.master.plan import Plan
+from veloai_shared.schema.master.platform_admin import PlatformAdmin
 from veloai_shared.schema.master.rbac import Permission, Role
 from veloai_shared.schema.master.subscription import Subscription, SubscriptionStatus
 from veloai_shared.schema.master.tenant_registry import Tenant, TenantStatus
@@ -22,4 +23,5 @@ __all__ = [
     "Permission",
     "AuditLog",
     "TenantUserIndex",
+    "PlatformAdmin",
 ]

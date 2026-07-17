@@ -21,6 +21,7 @@ class AskAIResponse(BaseModel):
     execution_time: Decimal
     cached: bool
     estimated_cost: Decimal
+    tool_used: str | None = None
 
 
 class AiConversationResponse(BaseModel):

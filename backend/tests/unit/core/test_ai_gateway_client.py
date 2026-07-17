@@ -51,3 +51,37 @@ async def test_generate_raises_app_exception_on_network_error() -> None:
 
     assert exc_info.value.code == "AI_GATEWAY_ERROR"
     assert exc_info.value.status_code == 502
+
+
+@respx.mock
+async def test_embeddings_parses_successful_envelope() -> None:
+    respx.post(f"{_BASE_URL}/embeddings").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "message": "Embeddings gerados com sucesso.",
+                "data": {
+                    "embeddings": [[0.1, 0.2], [0.3, 0.4]],
+                    "model": "text-embedding-004",
+                },
+            },
+        )
+    )
+    client = AIGatewayClient(base_url=_BASE_URL)
+
+    result = await client.embeddings(["chunk um", "chunk dois"])
+
+    assert result == [[0.1, 0.2], [0.3, 0.4]]
+
+
+@respx.mock
+async def test_embeddings_raises_app_exception_on_network_error() -> None:
+    respx.post(f"{_BASE_URL}/embeddings").mock(return_value=httpx.Response(502))
+    client = AIGatewayClient(base_url=_BASE_URL)
+
+    with pytest.raises(AppException) as exc_info:
+        await client.embeddings(["texto"])
+
+    assert exc_info.value.code == "AI_GATEWAY_ERROR"
+    assert exc_info.value.status_code == 502

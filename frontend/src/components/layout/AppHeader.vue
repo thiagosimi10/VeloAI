@@ -3,11 +3,13 @@ import { Bell, LogOut, Moon, Search, Sparkles, Sun } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import { useAiStore } from '@/stores/ai'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
+const aiStore = useAiStore()
 const router = useRouter()
 
 const isUserMenuOpen = ref(false)
@@ -41,7 +43,9 @@ async function handleLogout(): Promise<void> {
     <div class="flex items-center gap-2">
       <button
         type="button"
+        data-testid="ask-ai-button"
         class="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover"
+        @click="aiStore.toggleChat()"
       >
         <Sparkles :size="16" />
         <span>Perguntar para IA</span>

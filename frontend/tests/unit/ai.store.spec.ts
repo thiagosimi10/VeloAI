@@ -15,6 +15,7 @@ const RAW_ASK_AI_RESPONSE = {
   execution_time: '1.234',
   cached: false,
   estimated_cost: '0.0000120',
+  tool_used: null,
 }
 
 describe('ai store', () => {
@@ -33,6 +34,18 @@ describe('ai store', () => {
     expect(result?.response).toBe('Você vendeu R$ 12.340,00 em maio.')
     expect(result?.tokens).toBe(60)
     expect(store.lastResult?.model).toBe('gemini-3.1-flash-lite')
+    expect(result?.toolUsed).toBeNull()
+  })
+
+  it('askAI maps tool_used when the assistant executes a Tool', async () => {
+    vi.mocked(http.post).mockResolvedValueOnce({
+      data: { data: { ...RAW_ASK_AI_RESPONSE, tool_used: 'CreateCustomer' } },
+    })
+    const store = useAiStore()
+
+    const result = await store.askAI('Cadastre um cliente chamado João Silva.')
+
+    expect(result?.toolUsed).toBe('CreateCustomer')
   })
 
   it('askAI returns null and sets error on failure', async () => {
@@ -61,5 +74,23 @@ describe('ai store', () => {
     await pending
 
     expect(store.isLoading).toBe(false)
+  })
+
+  it('opens, closes and toggles the chat', () => {
+    const store = useAiStore()
+
+    expect(store.isChatOpen).toBe(false)
+
+    store.openChat()
+    expect(store.isChatOpen).toBe(true)
+
+    store.closeChat()
+    expect(store.isChatOpen).toBe(false)
+
+    store.toggleChat()
+    expect(store.isChatOpen).toBe(true)
+
+    store.toggleChat()
+    expect(store.isChatOpen).toBe(false)
   })
 })

@@ -29,6 +29,7 @@ os.environ.setdefault("JWT_REFRESH_SECRET", "integration-test-jwt-refresh-secret
 import uuid  # noqa: E402
 from collections.abc import AsyncIterator  # noqa: E402
 from dataclasses import dataclass  # noqa: E402
+from decimal import Decimal  # noqa: E402
 
 import asyncpg  # noqa: E402
 import pytest  # noqa: E402
@@ -36,7 +37,16 @@ import pytest_asyncio  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import create_async_engine  # noqa: E402
 from veloai_shared.permissions_catalog import DEFAULT_ADMIN_PERMISSIONS  # noqa: E402
-from veloai_shared.schema.master import MasterBase, Tenant, TenantStatus, TenantUserIndex  # noqa: E402
+from veloai_shared.schema.master import (  # noqa: E402
+    MasterBase,
+    Plan,
+    PlatformAdmin,
+    Subscription,
+    SubscriptionStatus,
+    Tenant,
+    TenantStatus,
+    TenantUserIndex,
+)
 from veloai_shared.schema.tenant import (  # noqa: E402
     Company,
     TenantBase,
@@ -59,6 +69,9 @@ ADMIN_PASSWORD = "postgres"
 TEST_USER_EMAIL = "maria@assistenciasilva.test"
 TEST_USER_TEMP_PASSWORD = "Temp0rary!Pass"  # noqa: S105 - segredo de teste
 
+PLATFORM_ADMIN_EMAIL = "operador@veloai.test"
+PLATFORM_ADMIN_PASSWORD = "Op3rad0r!Senha"  # noqa: S105 - segredo de teste
+
 
 @dataclass(frozen=True)
 class AuthFixtureData:
@@ -66,6 +79,8 @@ class AuthFixtureData:
     database_name: str
     user_email: str
     temporary_password: str
+    platform_admin_email: str
+    platform_admin_password: str
 
 
 def _admin_url(database: str) -> str:
@@ -180,6 +195,16 @@ async def _seed_test_data() -> AuthFixtureData:
     engine = create_async_engine(_admin_url(MASTER_DB))
     try:
         async with engine.begin() as connection:
+            plan_id = new_uuid7()
+            await connection.execute(
+                Plan.__table__.insert().values(
+                    id=plan_id,
+                    name="VeloAI Professional",
+                    price=Decimal("129.90"),
+                    trial_days=14,
+                    active=True,
+                )
+            )
             await connection.execute(
                 Tenant.__table__.insert().values(
                     id=tenant_id,
@@ -188,12 +213,37 @@ async def _seed_test_data() -> AuthFixtureData:
                     database_name=TENANT_DB,
                     database_host=os.environ["POSTGRES_HOST"],
                     database_port=int(os.environ["POSTGRES_PORT"]),
+                    plan_id=plan_id,
                     status=TenantStatus.ACTIVE.value,
                 )
             )
             await connection.execute(
                 TenantUserIndex.__table__.insert().values(
                     id=new_uuid7(), email=TEST_USER_EMAIL, tenant_id=tenant_id
+                )
+            )
+            # Assinatura ACTIVE — mantém o tenant de teste fiel ao que um tenant
+            # provisionado de verdade recebe (Fase 17), e passa livremente pelo gate
+            # `require_active_subscription` sem afetar os demais testes de integração.
+            await connection.execute(
+                Subscription.__table__.insert().values(
+                    id=new_uuid7(),
+                    tenant_id=tenant_id,
+                    plan_id=plan_id,
+                    status=SubscriptionStatus.ACTIVE.value,
+                )
+            )
+            # Operador da plataforma (Fase 18) — bootstrap único, igual ao que
+            # `scripts/seed_master.py` faz de verdade no boot do container do
+            # Provisioning; não pertence a nenhum tenant.
+            await connection.execute(
+                PlatformAdmin.__table__.insert().values(
+                    id=new_uuid7(),
+                    email=PLATFORM_ADMIN_EMAIL,
+                    password_hash=hash_password(PLATFORM_ADMIN_PASSWORD),
+                    first_name="Operador",
+                    active=True,
+                    force_password_change=False,
                 )
             )
     finally:
@@ -251,6 +301,8 @@ async def _seed_test_data() -> AuthFixtureData:
         database_name=TENANT_DB,
         user_email=TEST_USER_EMAIL,
         temporary_password=TEST_USER_TEMP_PASSWORD,
+        platform_admin_email=PLATFORM_ADMIN_EMAIL,
+        platform_admin_password=PLATFORM_ADMIN_PASSWORD,
     )
 
 

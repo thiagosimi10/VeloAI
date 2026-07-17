@@ -19,6 +19,7 @@ const RAW_ASK_AI_RESPONSE = {
   execution_time: '1.234',
   cached: false,
   estimated_cost: '0.0000120',
+  tool_used: null,
 }
 
 async function flushPromises(): Promise<void> {
@@ -49,6 +50,25 @@ describe('AiAssistantPanel', () => {
     expect(http.post).toHaveBeenCalledWith('/api/v1/ai/ask', { prompt: 'Quanto vendi em maio?' })
     expect(wrapper.text()).toContain('Você vendeu R$ 12.340,00 em maio.')
     expect(wrapper.text()).toContain('gemini-3.1-flash-lite')
+    expect(wrapper.find('[data-testid="ai-assistant-tool-used"]').exists()).toBe(false)
+  })
+
+  it('shows which Tool was used when the assistant executes one', async () => {
+    vi.mocked(http.post).mockResolvedValueOnce({
+      data: { data: { ...RAW_ASK_AI_RESPONSE, tool_used: 'CreateCustomer' } },
+    })
+    const wrapper = mountPanel()
+
+    await wrapper
+      .find('[data-testid="ai-assistant-prompt"]')
+      .setValue('Cadastre um cliente chamado João Silva.')
+    await wrapper.find('[data-testid="ai-assistant-ask-button"]').trigger('click')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="ai-assistant-tool-used"]').text()).toContain(
+      'CreateCustomer',
+    )
   })
 
   it('shows an error message when the request fails', async () => {

@@ -56,4 +56,9 @@ DEFAULT_ADMIN_PERMISSIONS: list[tuple[str, str]] = [
     ("attachments", "upload"),
     ("attachments", "delete"),
     ("ai", "use"),
+    ("knowledge", "view"),
+    ("knowledge", "create"),
+    ("knowledge", "delete"),
+    ("billing", "view"),
+    ("billing", "manage"),
 ]

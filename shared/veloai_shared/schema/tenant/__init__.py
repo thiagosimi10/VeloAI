@@ -3,10 +3,13 @@ refresh tokens, histórico de login), os módulos de negócio do CRM (Clientes,
 Fornecedores, Categorias, Produtos, Serviços), o histórico de estoque (`StockMovement`,
 Fase 7), o núcleo operacional de Ordens de Serviço (Fase 8), o núcleo operacional de
 Vendas (Fase 9), o núcleo operacional Financeiro (Fase 10), os anexos genéricos via
-MinIO (`Attachment`, Fase 12) e o registro de uso de IA (`AiConversation`, Fase 13)."""
+MinIO (`Attachment`, Fase 12), o registro de uso de IA (`AiConversation`, Fase 13), a
+execução de Tools via MCP (`AiAction`, Fase 14) e a Base de Conhecimento do RAG
+(`KnowledgeDocument`, Fase 15)."""
 
 from veloai_shared.schema.tenant.account_payable import AccountPayable
 from veloai_shared.schema.tenant.account_receivable import AccountReceivable
+from veloai_shared.schema.tenant.ai_action import AiAction
 from veloai_shared.schema.tenant.ai_conversation import AiConversation
 from veloai_shared.schema.tenant.attachment import Attachment
 from veloai_shared.schema.tenant.audit_log import TenantAuditLog
@@ -15,6 +18,7 @@ from veloai_shared.schema.tenant.cash_flow_entry import CashFlowEntry
 from veloai_shared.schema.tenant.category import Category
 from veloai_shared.schema.tenant.company import Company
 from veloai_shared.schema.tenant.customer import Customer
+from veloai_shared.schema.tenant.knowledge_document import KnowledgeDocument
 from veloai_shared.schema.tenant.login_history import LoginHistory
 from veloai_shared.schema.tenant.product import Product
 from veloai_shared.schema.tenant.rbac import TenantPermission, TenantRole, TenantRolePermission
@@ -46,6 +50,8 @@ __all__ = [
     "CashFlowEntry",
     "Attachment",
     "AiConversation",
+    "AiAction",
+    "KnowledgeDocument",
     "TenantUser",
     "TenantRole",
     "TenantPermission",

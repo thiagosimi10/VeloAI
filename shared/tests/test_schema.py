@@ -26,12 +26,14 @@ from veloai_shared.schema.master import (
 from veloai_shared.schema.tenant import (
     AccountPayable,
     AccountReceivable,
+    AiAction,
     AiConversation,
     Attachment,
     CashFlowEntry,
     Category,
     Company,
     Customer,
+    KnowledgeDocument,
     LoginHistory,
     Product,
     RefreshToken,
@@ -602,3 +604,86 @@ def test_ai_conversation_round_trip(tenant_session: Session) -> None:
     assert fetched.tokens == 128
     assert fetched.model == "gemini-3.1-flash-lite"
     assert fetched.created_at is not None
+
+
+def test_ai_action_round_trip(tenant_session: Session) -> None:
+    company = Company(legal_name="Empresa Teste LTDA", document="12345678000199")
+    role = TenantRole(name="Administrador")
+    tenant_session.add_all([company, role])
+    tenant_session.flush()
+
+    user = TenantUser(
+        company_id=company.id,
+        role_id=role.id,
+        first_name="Maria",
+        email="maria3@empresa.test",
+        password_hash="hashed",
+    )
+    tenant_session.add(user)
+    tenant_session.flush()
+
+    conversation = AiConversation(
+        user_id=user.id,
+        prompt="Cadastre um cliente chamado João Silva.",
+        response="Cliente João Silva cadastrado com sucesso.",
+        tokens=96,
+        model="gemini-3.1-flash-lite",
+        execution_time=Decimal("2.150"),
+    )
+    tenant_session.add(conversation)
+    tenant_session.flush()
+
+    action = AiAction(
+        conversation_id=conversation.id,
+        tool="CreateCustomer",
+        service="customers",
+        execution={"arguments": {"name": "João Silva"}, "result": {"id": "some-uuid"}},
+        success=True,
+    )
+    tenant_session.add(action)
+    tenant_session.commit()
+
+    fetched = tenant_session.get(AiAction, action.id)
+    assert fetched is not None
+    assert fetched.conversation_id == conversation.id
+    assert fetched.tool == "CreateCustomer"
+    assert fetched.service == "customers"
+    assert fetched.success is True
+    assert fetched.execution == {
+        "arguments": {"name": "João Silva"},
+        "result": {"id": "some-uuid"},
+    }
+    assert fetched.created_at is not None
+
+
+def test_knowledge_document_round_trip(tenant_session: Session) -> None:
+    company = Company(legal_name="Empresa Teste LTDA", document="12345678000199")
+    role = TenantRole(name="Administrador")
+    tenant_session.add_all([company, role])
+    tenant_session.flush()
+
+    user = TenantUser(
+        company_id=company.id,
+        role_id=role.id,
+        first_name="Maria",
+        email="maria4@empresa.test",
+        password_hash="hashed",
+    )
+    tenant_session.add(user)
+    tenant_session.flush()
+
+    document = KnowledgeDocument(
+        title="Política de Garantia",
+        content="Todo produto tem garantia de 90 dias contra defeitos de fabricação.",
+        created_by=user.id,
+    )
+    tenant_session.add(document)
+    tenant_session.commit()
+
+    fetched = tenant_session.get(KnowledgeDocument, document.id)
+    assert fetched is not None
+    assert fetched.title == "Política de Garantia"
+    assert fetched.created_by == user.id
+    assert fetched.created_at is not None
+    assert fetched.updated_at is not None
+    assert fetched.deleted_at is None

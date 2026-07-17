@@ -60,6 +60,16 @@ class PermissionDeniedError(AppException):
     code = "PERMISSION_DENIED"
 
 
+class SubscriptionInactiveError(AppException):
+    """Assinatura expirada/cancelada/suspensa — diferente de `PermissionDeniedError`,
+    que é sobre o que o usuário pode fazer; esta é sobre se o tenant como um todo pode
+    usar o sistema, conforme `31-BILLING.md` ("Nenhum Tenant poderá utilizar o sistema
+    após suspensão definitiva")."""
+
+    status_code = status.HTTP_403_FORBIDDEN
+    code = "SUBSCRIPTION_INACTIVE"
+
+
 class AuthenticationError(AppException):
     """Credenciais ausentes, inválidas ou token expirado/malformado — usuário ainda não
     autenticado (diferente de `PermissionDeniedError`, que é para usuários autenticados

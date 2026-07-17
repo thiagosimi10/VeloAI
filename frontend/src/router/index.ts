@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+import { useAdminAuthStore } from '@/stores/adminAuth'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -202,6 +203,36 @@ const router = createRouter({
       meta: { layout: 'default', requiresAuth: true },
     },
     {
+      path: '/knowledge',
+      name: 'knowledge',
+      component: () => import('@/views/knowledge/KnowledgeListView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/billing',
+      name: 'billing',
+      component: () => import('@/views/BillingView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/admin/login',
+      name: 'admin-login',
+      component: () => import('@/views/admin/AdminLoginView.vue'),
+      meta: { layout: 'auth', requiresAdminAuth: false },
+    },
+    {
+      path: '/admin/tenants',
+      name: 'admin-tenants',
+      component: () => import('@/views/admin/AdminTenantsView.vue'),
+      meta: { layout: 'admin', requiresAdminAuth: true },
+    },
+    {
+      path: '/admin/tenants/:id/audit-log',
+      name: 'admin-tenant-audit-log',
+      component: () => import('@/views/admin/AdminTenantAuditLogView.vue'),
+      meta: { layout: 'admin', requiresAdminAuth: true },
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/views/NotFoundView.vue'),
@@ -211,6 +242,27 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  // Guard do Painel Administrativo (Fase 18) — completamente isolado do guard de
+  // sessão de tenant abaixo. Um Platform Admin nunca compartilha estado/cookie com um
+  // usuário de tenant, então a sessão é resolvida por um store separado.
+  if (to.path.startsWith('/admin')) {
+    const adminAuthStore = useAdminAuthStore()
+
+    if (!adminAuthStore.isBootstrapped) {
+      await adminAuthStore.fetchCurrentAdmin()
+    }
+
+    if (to.meta.requiresAdminAuth && !adminAuthStore.isAuthenticated) {
+      return { name: 'admin-login' }
+    }
+
+    if (to.name === 'admin-login' && adminAuthStore.isAuthenticated) {
+      return { name: 'admin-tenants' }
+    }
+
+    return true
+  }
+
   const authStore = useAuthStore()
 
   // Restaura a sessão a partir do cookie HttpOnly uma única vez por carregamento da

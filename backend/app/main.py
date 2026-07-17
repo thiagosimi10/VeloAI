@@ -17,6 +17,7 @@ from app.core.config import get_settings
 from app.core.database import dispose_engines, get_master_engine
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware
+from app.core.qdrant_client import get_qdrant_client
 from app.core.rate_limit import get_redis_client
 from app.core.storage import get_storage_client
 
@@ -47,6 +48,10 @@ async def _check_storage() -> bool:
     return await get_storage_client().is_reachable()
 
 
+async def _check_qdrant() -> bool:
+    return await get_qdrant_client().is_reachable()
+
+
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
@@ -70,6 +75,7 @@ app.include_router(
             "master_database": _check_master_database,
             "redis": _check_redis,
             "storage": _check_storage,
+            "qdrant": _check_qdrant,
         },
     )
 )

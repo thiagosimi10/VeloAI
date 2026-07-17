@@ -3,8 +3,8 @@
 (Fase 13). Append-only, nunca atualizada nem apagada — mesmo padrão de
 `StockMovement`/`CashFlowEntry`/`TenantAuditLog`: só `created_at` explícito, embora o
 banco-fonte não liste esse campo — necessário para ordenar o histórico por mais
-recente. `ai_actions` (execução de Tools via MCP) fica para a Fase 14, quando MCP
-existir de verdade."""
+recente. `ai_actions` (execução de Tools via MCP, Fase 14) mora em
+`veloai_shared.schema.tenant.ai_action`."""
 
 from __future__ import annotations
 

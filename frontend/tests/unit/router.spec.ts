@@ -92,4 +92,43 @@ describe('router', () => {
 
     expect(router.currentRoute.value.name).toBe('not-found')
   })
+
+  it('redirects to /admin/login when navigating to an admin route while unauthenticated', async () => {
+    vi.mocked(http.get).mockRejectedValueOnce(new Error('unauthenticated'))
+
+    const router = (await import('@/router')).default
+    await router.push('/admin/tenants')
+
+    expect(router.currentRoute.value.name).toBe('admin-login')
+  })
+
+  it('allows navigating to /admin/tenants when the admin session is restored', async () => {
+    vi.mocked(http.get).mockResolvedValueOnce({
+      data: {
+        data: {
+          id: 'admin-1',
+          email: 'operador@veloai.internal',
+          first_name: 'Operador',
+          last_name: null,
+          must_change_password: false,
+        },
+      },
+    })
+
+    const router = (await import('@/router')).default
+    await router.push('/admin/tenants')
+
+    expect(router.currentRoute.value.name).toBe('admin-tenants')
+  })
+
+  it('never restores a tenant session when navigating to an admin route', async () => {
+    vi.mocked(http.get).mockRejectedValueOnce(new Error('unauthenticated'))
+
+    const router = (await import('@/router')).default
+    await router.push('/admin/tenants')
+
+    // Só a chamada de admin (/admin/auth/me) deveria ter acontecido — nunca /auth/me.
+    expect(http.get).toHaveBeenCalledTimes(1)
+    expect(http.get).toHaveBeenCalledWith('/api/v1/admin/auth/me')
+  })
 })

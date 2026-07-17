@@ -12,14 +12,33 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Any
+
+
+@dataclass(frozen=True)
+class ToolDeclaration:
+    """Descrição de uma Tool disponível para a IA chamar nesta requisição, conforme
+    docs/20-MCP-TOOLS.md ("Estrutura de uma Tool"). `parameters` é um JSON Schema
+    (formato Pydantic — cada provider concreto converte para o formato que exigir)."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class FunctionCallResult:
+    name: str
+    arguments: dict[str, Any]
 
 
 @dataclass(frozen=True)
 class GenerateResult:
-    text: str
+    text: str | None
     input_tokens: int
     output_tokens: int
     model: str
+    function_call: FunctionCallResult | None = None
 
 
 class AIProvider(ABC):
@@ -29,8 +48,18 @@ class AIProvider(ABC):
     name: str
 
     @abstractmethod
-    async def generate(self, prompt: str, *, system_prompt: str | None = None) -> GenerateResult:
-        """Gera uma resposta de texto a partir de um prompt."""
+    async def generate(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str | None = None,
+        tools: list[ToolDeclaration] | None = None,
+    ) -> GenerateResult:
+        """Gera uma resposta de texto a partir de um prompt. Se `tools` for informado e o
+        modelo decidir chamar uma delas, `GenerateResult.function_call` vem preenchido e
+        `text` vem `None` — nunca ambos ao mesmo tempo (conforme 20-MCP-TOOLS.md, só uma
+        rodada de tool-calling por chamada; o chamador decide o que fazer com o
+        resultado da Tool e chama `generate` de novo para a resposta final)."""
 
     @abstractmethod
     async def health_check(self) -> bool:

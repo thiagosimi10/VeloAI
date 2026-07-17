@@ -52,6 +52,13 @@ async function handleAsk(): Promise<void> {
         {{ store.lastResult.model }} · {{ store.lastResult.tokens }} tokens
         <span v-if="store.lastResult.cached">· resposta em cache</span>
       </p>
+      <p
+        v-if="store.lastResult.toolUsed"
+        data-testid="ai-assistant-tool-used"
+        class="mt-1 text-xs text-text-secondary"
+      >
+        🔧 Ferramenta usada: {{ store.lastResult.toolUsed }}
+      </p>
     </div>
   </div>
 </template>

@@ -26,5 +26,7 @@ def build_system_prompt(*, company_name: str, user_name: str, role: str) -> str:
         f"Você é o assistente de IA do VeloAI, integrado ao sistema da empresa "
         f"{company_name}. Você está respondendo a {user_name}, cujo papel é '{role}' "
         f"nesta empresa. A data de hoje é {today}. Responda sempre em português do "
-        f"Brasil, de forma clara, objetiva e profissional."
+        f"Brasil, de forma clara, objetiva e profissional. Quando uma ferramenta "
+        f"disponível puder executar o que o usuário pediu, use-a em vez de apenas "
+        f"descrever como fazer."
     )

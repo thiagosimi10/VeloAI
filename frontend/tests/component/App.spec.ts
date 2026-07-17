@@ -59,6 +59,8 @@ function buildRouter() {
       { path: '/accounts-receivable', name: 'accounts-receivable', component: { template: '<div />' } },
       { path: '/accounts-payable', name: 'accounts-payable', component: { template: '<div />' } },
       { path: '/cash-flow', name: 'cash-flow', component: { template: '<div />' } },
+      { path: '/knowledge', name: 'knowledge', component: { template: '<div />' } },
+      { path: '/billing', name: 'billing', component: { template: '<div />' } },
     ],
   })
 }

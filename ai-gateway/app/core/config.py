@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     ai_temperature: float = 0.2
     ai_max_tokens: int = 8192
+    ai_embedding_model: str = "text-embedding-004"
 
     redis_url: str = "redis://redis:6379/0"
     ai_cache_ttl_seconds: int = 3600

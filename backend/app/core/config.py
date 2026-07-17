@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 14
     cookie_secure: bool = False
 
+    # Painel Administrativo (Fase 18) — secret próprio, nunca reaproveita jwt_secret
+    # (isola a assinatura dos tokens de Platform Admin dos tokens de sessão de tenant).
+    platform_admin_jwt_secret: str = "change-me-in-production"
+    platform_admin_token_expire_minutes: int = 60
+
     # Rate limit de login (29-SECURITY.md, "Login: bloqueio temporário").
     login_rate_limit_max_attempts: int = 5
     login_rate_limit_window_seconds: int = 900
@@ -51,6 +56,9 @@ class Settings(BaseSettings):
 
     # AI Gateway (Fase 13) — único serviço que o Backend chama para falar com uma LLM.
     ai_gateway_url: str = "http://ai-gateway:8002"
+
+    # Qdrant (RAG — Fase 15): uma Collection por tenant, conforme 04-MULTI-TENANCY.md.
+    qdrant_url: str = "http://qdrant:6333"
 
     @property
     def cors_origins_list(self) -> list[str]:

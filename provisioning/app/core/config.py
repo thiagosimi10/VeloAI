@@ -36,6 +36,9 @@ class Settings(BaseSettings):
 
     tenant_database_prefix: str = "tenant_"
 
+    # Qdrant (RAG — Fase 15): uma Collection por tenant, criada no provisionamento.
+    qdrant_url: str = "http://qdrant:6333"
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def maintenance_database_url(self) -> str:

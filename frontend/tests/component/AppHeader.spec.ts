@@ -9,6 +9,7 @@ vi.mock('@/services/http', () => ({
 
 import AppHeader from '@/components/layout/AppHeader.vue'
 import { http } from '@/services/http'
+import { useAiStore } from '@/stores/ai'
 import { useAuthStore } from '@/stores/auth'
 
 function buildRouter() {
@@ -36,6 +37,19 @@ describe('AppHeader', () => {
 
     expect(wrapper.text()).toContain('Perguntar para IA')
     expect(wrapper.text()).toContain('Pesquisar')
+  })
+
+  it('toggles the AI chat when the "Perguntar para IA" button is clicked', async () => {
+    const router = buildRouter()
+    await router.push('/dashboard')
+    const aiStore = useAiStore()
+    const wrapper = mount(AppHeader, { global: { plugins: [router] } })
+
+    expect(aiStore.isChatOpen).toBe(false)
+
+    await wrapper.find('[data-testid="ask-ai-button"]').trigger('click')
+
+    expect(aiStore.isChatOpen).toBe(true)
   })
 
   it('toggles the theme when the theme button is clicked', async () => {

@@ -8,7 +8,14 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from veloai_shared.schema.master import AuditLog, Tenant, TenantStatus, TenantUserIndex
+from veloai_shared.schema.master import (
+    AuditLog,
+    Plan,
+    Subscription,
+    Tenant,
+    TenantStatus,
+    TenantUserIndex,
+)
 
 
 class TenantRepository:
@@ -32,6 +39,22 @@ class TenantRepository:
         tenant.status = status.value
         await self._session.flush()
         return tenant
+
+    async def get_active_plan(self) -> Plan | None:
+        """Busca o Plano ativo a ser atribuído a cada novo tenant. Semeado por
+        `scripts/seed_master.py` (já executado no boot do container, conforme
+        `docker-entrypoint.sh`) — só existe 1 Plano nesta fase, mas a busca já é
+        preparada para múltiplos (o primeiro ativo por ordem de criação)."""
+
+        result = await self._session.execute(
+            select(Plan).where(Plan.active.is_(True)).order_by(Plan.created_at).limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def create_subscription(self, subscription: Subscription) -> Subscription:
+        self._session.add(subscription)
+        await self._session.flush()
+        return subscription
 
     async def add_user_index(self, *, email: str, tenant_id: uuid.UUID) -> TenantUserIndex:
         """Registra a entrada de roteamento de login (e-mail → tenant) no Banco Master,

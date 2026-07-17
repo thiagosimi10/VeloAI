@@ -5,7 +5,6 @@ import * as am5xy from '@amcharts/amcharts5/xy'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import AiAssistantPanel from '@/components/AiAssistantPanel.vue'
 import { useDashboardStore } from '@/stores/dashboard'
 
 const store = useDashboardStore()
@@ -239,7 +238,5 @@ onBeforeUnmount(() => {
         <div ref="topProductsChartDiv" data-testid="top-products-chart" class="h-64 w-full"></div>
       </div>
     </div>
-
-    <AiAssistantPanel />
   </div>
 </template>

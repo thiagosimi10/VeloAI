@@ -10,6 +10,7 @@ export interface AskAIResult {
   executionTime: string
   cached: boolean
   estimatedCost: string
+  toolUsed: string | null
 }
 
 interface RawAskAIResponse {
@@ -19,12 +20,14 @@ interface RawAskAIResponse {
   execution_time: string
   cached: boolean
   estimated_cost: string
+  tool_used: string | null
 }
 
 interface AiState {
   isLoading: boolean
   error: string | null
   lastResult: AskAIResult | null
+  isChatOpen: boolean
 }
 
 function mapAskAIResponse(raw: RawAskAIResponse): AskAIResult {
@@ -35,6 +38,7 @@ function mapAskAIResponse(raw: RawAskAIResponse): AskAIResult {
     executionTime: raw.execution_time,
     cached: raw.cached,
     estimatedCost: raw.estimated_cost,
+    toolUsed: raw.tool_used,
   }
 }
 
@@ -53,6 +57,7 @@ export const useAiStore = defineStore('ai', {
     isLoading: false,
     error: null,
     lastResult: null,
+    isChatOpen: false,
   }),
   actions: {
     async askAI(prompt: string): Promise<AskAIResult | null> {
@@ -69,6 +74,15 @@ export const useAiStore = defineStore('ai', {
       } finally {
         this.isLoading = false
       }
+    },
+    openChat(): void {
+      this.isChatOpen = true
+    },
+    closeChat(): void {
+      this.isChatOpen = false
+    },
+    toggleChat(): void {
+      this.isChatOpen = !this.isChatOpen
     },
   },
 })

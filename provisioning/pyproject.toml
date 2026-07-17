@@ -1,6 +1,6 @@
 [project]
 name = "veloai-provisioning"
-version = "0.1.0"
+version = "1.0.0"
 description = "VeloAI — Provisioning Service (único serviço com privilégios administrativos de banco)."
 requires-python = ">=3.13"
 

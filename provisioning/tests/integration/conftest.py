@@ -12,11 +12,13 @@ from collections.abc import AsyncIterator
 import asyncpg
 import pytest
 import pytest_asyncio
+from qdrant_client import AsyncQdrantClient
 from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.database import get_maintenance_engine, get_master_engine
 from app.services.database_admin_service import DatabaseAdminService
+from scripts.seed_master import seed_default_plan
 
 TEST_MASTER_DB = "veloai_master_test"
 # Senha usada apenas para criar a role `veloai_app` neste ambiente de teste — nunca
@@ -89,12 +91,26 @@ async def _postgres_available() -> bool:
     return True
 
 
+async def _qdrant_available() -> bool:
+    settings = get_settings()
+    client = AsyncQdrantClient(url=settings.qdrant_url, timeout=2)
+    try:
+        await client.get_collections()
+    except Exception:  # noqa: BLE001 - qualquer falha de conexão apenas pula os testes
+        return False
+    finally:
+        await client.close()
+    return True
+
+
 @pytest_asyncio.fixture(scope="session")
 async def master_database() -> AsyncIterator[None]:
     _configure_test_environment()
 
     if not await _postgres_available():
         pytest.skip("PostgreSQL indisponível — pulando testes de integração do Provisioning.")
+    if not await _qdrant_available():
+        pytest.skip("Qdrant indisponível — pulando testes de integração do Provisioning.")
 
     await _ensure_app_role_exists()
 
@@ -103,6 +119,10 @@ async def master_database() -> AsyncIterator[None]:
     await admin_service.create_database(TEST_MASTER_DB)
     admin_service.run_master_migrations()
     await admin_service.grant_app_role_privileges_on_master()
+    # Em produção, o Plano inicial é garantido pelo `docker-entrypoint.sh` (roda
+    # `scripts.seed_master` a cada subida do container) — aqui replicamos essa
+    # precondição diretamente, já que os testes não passam pelo entrypoint real.
+    await seed_default_plan()
 
     yield
 
