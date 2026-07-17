@@ -2,7 +2,7 @@
 identificadores (UUIDv7) e tokens JWT, conforme 05-BANCO-DE-DADOS.md, 29-SECURITY.md e
 02-ARQUITETURA.md."""
 
-from veloai_shared.security.ids import new_uuid7
+from veloai_shared.security.ids import new_uuid7, short_id
 from veloai_shared.security.jwt import (
     TokenError,
     TokenExpiredError,
@@ -14,6 +14,7 @@ from veloai_shared.security.password import hash_password, needs_rehash, verify_
 
 __all__ = [
     "new_uuid7",
+    "short_id",
     "hash_password",
     "verify_password",
     "needs_rehash",

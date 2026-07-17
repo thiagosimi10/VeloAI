@@ -6,7 +6,7 @@ realizar estorno." — estornar é lançar uma nova entrada com o tipo oposto)."
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+import datetime as dt
 from decimal import Decimal
 from typing import Literal
 
@@ -20,7 +20,7 @@ class CreateCashFlowEntryRequest(BaseModel):
     category: str = Field(min_length=1, max_length=60)
     description: str | None = Field(default=None, max_length=255)
     amount: Decimal = Field(gt=0)
-    date: date | None = None
+    date: dt.date | None = None
 
 
 class CashFlowEntryResponse(BaseModel):
@@ -29,8 +29,8 @@ class CashFlowEntryResponse(BaseModel):
     category: str
     description: str | None
     amount: Decimal
-    date: date
-    created_at: datetime
+    date: dt.date
+    created_at: dt.datetime
 
     model_config = {"from_attributes": True}
 
