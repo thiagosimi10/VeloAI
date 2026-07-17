@@ -16,7 +16,7 @@ jobs:
         service: [backend, provisioning, ai-gateway, frontend]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v3
 
@@ -34,7 +34,7 @@ jobs:
     name: validate-compose
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Criar .env de exemplo para validação
         run: cp .env.example .env
