@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # AI Gateway (Fase 13) — único serviço que o Backend chama para falar com uma LLM.
     ai_gateway_url: str = "http://ai-gateway:8002"
 
+    # Provisioning Service (Fase 18, Painel Administrativo) — único serviço com
+    # credenciais administrativas de banco; o Backend delega a ele a criação de tenants
+    # (CREATE DATABASE, migrations, grants), nunca faz isso diretamente.
+    provisioning_url: str = "http://provisioning:8001"
+
     # Qdrant (RAG — Fase 15): uma Collection por tenant, conforme 04-MULTI-TENANCY.md.
     qdrant_url: str = "http://qdrant:6333"
 

@@ -20,7 +20,9 @@ const router = createRouter({
     },
     {
       path: '/',
-      redirect: '/dashboard',
+      name: 'landing',
+      component: () => import('@/views/LandingView.vue'),
+      meta: { layout: 'marketing', requiresAuth: false },
     },
     {
       path: '/dashboard',
@@ -224,6 +226,18 @@ const router = createRouter({
       path: '/admin/tenants',
       name: 'admin-tenants',
       component: () => import('@/views/admin/AdminTenantsView.vue'),
+      meta: { layout: 'admin', requiresAdminAuth: true },
+    },
+    {
+      path: '/admin/tenants/new',
+      name: 'admin-tenants-new',
+      component: () => import('@/views/admin/AdminTenantFormView.vue'),
+      meta: { layout: 'admin', requiresAdminAuth: true },
+    },
+    {
+      path: '/admin/tenants/:id/edit',
+      name: 'admin-tenants-edit',
+      component: () => import('@/views/admin/AdminTenantFormView.vue'),
       meta: { layout: 'admin', requiresAdminAuth: true },
     },
     {

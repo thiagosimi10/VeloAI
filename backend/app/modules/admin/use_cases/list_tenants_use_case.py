@@ -38,6 +38,7 @@ class ListTenantsUseCase:
             TenantOverviewItem(
                 tenant_id=tenant.id,
                 legal_name=tenant.legal_name,
+                trade_name=tenant.trade_name,
                 document=tenant.document,
                 status=tenant.status,
                 plan_name=(

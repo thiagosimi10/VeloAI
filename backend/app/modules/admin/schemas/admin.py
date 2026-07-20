@@ -8,7 +8,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from veloai_shared.validators import normalize_document
 
 
 class AdminLoginRequest(BaseModel):
@@ -32,11 +33,44 @@ class PlatformAdminResponse(BaseModel):
 class TenantOverviewItem(BaseModel):
     tenant_id: uuid.UUID
     legal_name: str
+    trade_name: str | None
     document: str
     status: str
     plan_name: str | None
     subscription_status: str | None
     trial_ends_at: datetime | None
+
+
+class CreateTenantRequest(BaseModel):
+    legal_name: str = Field(min_length=3, max_length=200)
+    trade_name: str | None = Field(default=None, max_length=200)
+    document: str = Field(min_length=11, max_length=18)
+    admin_name: str = Field(min_length=3, max_length=200)
+    admin_email: EmailStr
+
+    @field_validator("document")
+    @classmethod
+    def validate_document(cls, value: str) -> str:
+        return normalize_document(value)
+
+
+class UpdateTenantRequest(BaseModel):
+    legal_name: str = Field(min_length=3, max_length=200)
+    trade_name: str | None = Field(default=None, max_length=200)
+
+
+class TenantAdminCredentials(BaseModel):
+    admin_email: EmailStr
+    temporary_password: str
+
+
+class TenantProvisionedResponse(BaseModel):
+    tenant_id: uuid.UUID
+    legal_name: str
+    document: str
+    database_name: str
+    status: str
+    admin: TenantAdminCredentials
 
 
 class AdminSummaryResponse(BaseModel):

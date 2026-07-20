@@ -27,6 +27,20 @@ class TenantUserRepository:
     async def get_by_id(self, user_id: uuid.UUID) -> TenantUser | None:
         return await self._session.get(TenantUser, user_id)
 
+    async def get_first_admin_user(self) -> TenantUser | None:
+        """Usuário a ser assumido em uma impersonação de Platform Admin (Painel
+        Administrativo, Fase 18) — o papel "Administrador" é criado uma única vez, no
+        seed inicial do tenant (`provisioning/app/services/seed_service.py`)."""
+
+        result = await self._session.execute(
+            select(TenantUser)
+            .join(TenantRole, TenantRole.id == TenantUser.role_id)
+            .where(TenantRole.name == "Administrador", TenantUser.active.is_(True))
+            .order_by(TenantUser.created_at)
+            .limit(1)
+        )
+        return result.scalars().first()
+
     async def get_role_name(self, role_id: uuid.UUID) -> str | None:
         result = await self._session.execute(
             select(TenantRole.name).where(TenantRole.id == role_id)

@@ -6,11 +6,37 @@ import { http } from '@/services/http'
 export interface TenantOverview {
   tenantId: string
   legalName: string
+  tradeName: string | null
   document: string
   status: string
   planName: string | null
   subscriptionStatus: string | null
   trialEndsAt: string | null
+}
+
+export interface CreateTenantPayload {
+  legalName: string
+  tradeName: string | null
+  document: string
+  adminName: string
+  adminEmail: string
+}
+
+export interface UpdateTenantPayload {
+  legalName: string
+  tradeName: string | null
+}
+
+export interface TenantProvisioned {
+  tenantId: string
+  legalName: string
+  document: string
+  databaseName: string
+  status: string
+  admin: {
+    adminEmail: string
+    temporaryPassword: string
+  }
 }
 
 export interface AdminSummary {
@@ -37,11 +63,24 @@ export interface AuditLogEntry {
 interface RawTenantOverview {
   tenant_id: string
   legal_name: string
+  trade_name: string | null
   document: string
   status: string
   plan_name: string | null
   subscription_status: string | null
   trial_ends_at: string | null
+}
+
+interface RawTenantProvisioned {
+  tenant_id: string
+  legal_name: string
+  document: string
+  database_name: string
+  status: string
+  admin: {
+    admin_email: string
+    temporary_password: string
+  }
 }
 
 interface RawAdminSummary {
@@ -85,11 +124,26 @@ function mapTenant(raw: RawTenantOverview): TenantOverview {
   return {
     tenantId: raw.tenant_id,
     legalName: raw.legal_name,
+    tradeName: raw.trade_name,
     document: raw.document,
     status: raw.status,
     planName: raw.plan_name,
     subscriptionStatus: raw.subscription_status,
     trialEndsAt: raw.trial_ends_at,
+  }
+}
+
+function mapTenantProvisioned(raw: RawTenantProvisioned): TenantProvisioned {
+  return {
+    tenantId: raw.tenant_id,
+    legalName: raw.legal_name,
+    document: raw.document,
+    databaseName: raw.database_name,
+    status: raw.status,
+    admin: {
+      adminEmail: raw.admin.admin_email,
+      temporaryPassword: raw.admin.temporary_password,
+    },
   }
 }
 
@@ -163,6 +217,63 @@ export const useAdminStore = defineStore('admin', {
         this.error = extractErrorMessage(error)
       } finally {
         this.isLoading = false
+      }
+    },
+
+    async createTenant(payload: CreateTenantPayload): Promise<TenantProvisioned | null> {
+      this.error = null
+
+      try {
+        const response = await http.post<{ data: RawTenantProvisioned }>('/api/v1/admin/tenants', {
+          legal_name: payload.legalName,
+          trade_name: payload.tradeName,
+          document: payload.document,
+          admin_name: payload.adminName,
+          admin_email: payload.adminEmail,
+        })
+        return mapTenantProvisioned(response.data.data)
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return null
+      }
+    },
+
+    async updateTenant(tenantId: string, payload: UpdateTenantPayload): Promise<boolean> {
+      this.error = null
+
+      try {
+        await http.patch(`/api/v1/admin/tenants/${tenantId}`, {
+          legal_name: payload.legalName,
+          trade_name: payload.tradeName,
+        })
+        return true
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return false
+      }
+    },
+
+    async impersonateTenant(tenantId: string): Promise<boolean> {
+      this.error = null
+
+      try {
+        await http.post(`/api/v1/admin/tenants/${tenantId}/impersonate`)
+        return true
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return false
+      }
+    },
+
+    async cancelTenant(tenantId: string): Promise<boolean> {
+      this.error = null
+
+      try {
+        await http.post(`/api/v1/admin/tenants/${tenantId}/cancel`)
+        return true
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return false
       }
     },
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ShieldCheck } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
@@ -26,7 +27,10 @@ async function handleSubmit(): Promise<void> {
 
 <template>
   <form class="space-y-5" @submit.prevent="handleSubmit">
-    <div>
+    <div class="flex flex-col items-center text-center">
+      <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <ShieldCheck :size="22" />
+      </div>
       <h1 class="text-xl font-semibold text-text-primary dark:text-white">
         Painel Administrativo
       </h1>

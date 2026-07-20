@@ -19,6 +19,7 @@ from veloai_shared.schema.master import (
     Subscription,
     SubscriptionStatus,
     Tenant,
+    TenantStatus,
 )
 
 
@@ -40,6 +41,36 @@ class AdminRepository:
         admin.force_password_change = False
         await self._session.flush()
         return admin
+
+    async def get_tenant_by_id(self, tenant_id: uuid.UUID) -> Tenant | None:
+        return await self._session.get(Tenant, tenant_id)
+
+    async def update_tenant(
+        self, tenant: Tenant, *, legal_name: str, trade_name: str | None
+    ) -> Tenant:
+        tenant.legal_name = legal_name
+        tenant.trade_name = trade_name
+        await self._session.flush()
+        return tenant
+
+    async def update_tenant_status(self, tenant: Tenant, status: TenantStatus) -> Tenant:
+        tenant.status = status.value
+        await self._session.flush()
+        return tenant
+
+    async def add_audit_log(
+        self,
+        *,
+        tenant_id: uuid.UUID | None,
+        action: str,
+        resource: str,
+        before: dict[str, object] | None = None,
+        after: dict[str, object] | None = None,
+    ) -> AuditLog:
+        entry = AuditLog(tenant_id=tenant_id, action=action, resource=resource, before=before, after=after)
+        self._session.add(entry)
+        await self._session.flush()
+        return entry
 
     async def count_tenants(self) -> int:
         result = await self._session.execute(select(func.count()).select_from(Tenant))

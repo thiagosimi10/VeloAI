@@ -11,6 +11,12 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 from veloai_shared.responses import SuccessResponse
 
 from app.core.config import Settings, get_settings
+from app.core.database import TenantConnectionManager, get_tenant_connection_manager
+from app.core.dependencies import (
+    ACCESS_TOKEN_COOKIE_NAME,
+    REFRESH_TOKEN_COOKIE_NAME,
+    get_token_service,
+)
 from app.core.rate_limit import LoginRateLimiter, get_login_rate_limiter
 from app.modules.admin.dependencies import (
     ADMIN_ACCESS_TOKEN_COOKIE_NAME,
@@ -23,14 +29,20 @@ from app.modules.admin.schemas.admin import (
     AdminSummaryResponse,
     AuditLogEntryResponse,
     ChangeAdminPasswordRequest,
+    CreateTenantRequest,
     PlatformAdminResponse,
     TenantOverviewItem,
+    TenantProvisionedResponse,
+    UpdateTenantRequest,
 )
 from app.modules.admin.services.platform_admin_token_service import PlatformAdminTokenService
+from app.modules.admin.use_cases.cancel_tenant_use_case import CancelTenantUseCase
 from app.modules.admin.use_cases.change_platform_admin_password_use_case import (
     ChangePlatformAdminPasswordUseCase,
 )
+from app.modules.admin.use_cases.create_tenant_use_case import CreateTenantUseCase
 from app.modules.admin.use_cases.get_admin_summary_use_case import GetAdminSummaryUseCase
+from app.modules.admin.use_cases.impersonate_tenant_use_case import ImpersonateTenantUseCase
 from app.modules.admin.use_cases.list_tenant_audit_log_use_case import (
     ListTenantAuditLogUseCase,
 )
@@ -39,6 +51,8 @@ from app.modules.admin.use_cases.login_platform_admin_use_case import (
     LoginPlatformAdminUseCase,
 )
 from app.modules.admin.use_cases.me_platform_admin_use_case import MePlatformAdminUseCase
+from app.modules.admin.use_cases.update_tenant_use_case import UpdateTenantUseCase
+from app.modules.auth.services.token_service import TokenService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -137,6 +151,78 @@ async def list_tenants(
     return SuccessResponse(
         message="Tenants obtidos com sucesso.", data=result.items, meta=result.meta
     )
+
+
+@router.post("/tenants", status_code=201)
+async def create_tenant(
+    payload: CreateTenantRequest,
+    _current_admin: CurrentPlatformAdmin = Depends(get_current_platform_admin),
+) -> SuccessResponse[TenantProvisionedResponse]:
+    use_case = CreateTenantUseCase()
+    result = await use_case.execute(payload)
+
+    return SuccessResponse(message="Empresa criada com sucesso.", data=result)
+
+
+@router.patch("/tenants/{tenant_id}")
+async def update_tenant(
+    tenant_id: uuid.UUID,
+    payload: UpdateTenantRequest,
+    _current_admin: CurrentPlatformAdmin = Depends(get_current_platform_admin),
+) -> SuccessResponse[dict[str, str]]:
+    use_case = UpdateTenantUseCase()
+    await use_case.execute(
+        tenant_id=tenant_id, legal_name=payload.legal_name, trade_name=payload.trade_name
+    )
+
+    return SuccessResponse(message="Empresa atualizada com sucesso.", data={})
+
+
+@router.post("/tenants/{tenant_id}/cancel")
+async def cancel_tenant(
+    tenant_id: uuid.UUID,
+    _current_admin: CurrentPlatformAdmin = Depends(get_current_platform_admin),
+) -> SuccessResponse[dict[str, str]]:
+    use_case = CancelTenantUseCase()
+    await use_case.execute(tenant_id=tenant_id)
+
+    return SuccessResponse(message="Empresa cancelada com sucesso.", data={})
+
+
+@router.post("/tenants/{tenant_id}/impersonate")
+async def impersonate_tenant(
+    tenant_id: uuid.UUID,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+    token_service: TokenService = Depends(get_token_service),
+    _current_admin: CurrentPlatformAdmin = Depends(get_current_platform_admin),
+) -> SuccessResponse[dict[str, str]]:
+    use_case = ImpersonateTenantUseCase(
+        settings=settings, connection_manager=connection_manager, token_service=token_service
+    )
+    result = await use_case.execute(tenant_id=tenant_id)
+
+    response.set_cookie(
+        key=ACCESS_TOKEN_COOKIE_NAME,
+        value=result.access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=settings.jwt_access_token_expire_minutes * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE_NAME,
+        value=result.refresh_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        max_age=settings.jwt_refresh_token_expire_days * 24 * 60 * 60,
+        path="/",
+    )
+
+    return SuccessResponse(message="Sessão de acesso à empresa iniciada.", data={})
 
 
 @router.get("/tenants/{tenant_id}/audit-log")
