@@ -117,7 +117,10 @@ const faqs = ref([
 ])
 
 function toggleFaq(index: number): void {
-  faqs.value[index].open = !faqs.value[index].open
+  const faq = faqs.value[index]
+  if (faq) {
+    faq.open = !faq.open
+  }
 }
 
 function goToLogin(): void {
