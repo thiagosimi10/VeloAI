@@ -2,6 +2,7 @@ import { isAxiosError } from 'axios'
 import { defineStore } from 'pinia'
 
 import { http } from '@/services/http'
+import { type ImportResult, type RawImportResult, mapImportResult } from '@/types/import'
 
 export interface Category {
   id: string
@@ -145,6 +146,22 @@ export const useCategoriesStore = defineStore('categories', {
       } catch (error) {
         this.error = extractErrorMessage(error)
         return false
+      }
+    },
+
+    async importCategories(file: File): Promise<ImportResult | null> {
+      this.error = null
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await http.post<{ data: RawImportResult }>(
+          '/api/v1/categories/import',
+          formData,
+        )
+        return mapImportResult(response.data.data)
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return null
       }
     },
   },

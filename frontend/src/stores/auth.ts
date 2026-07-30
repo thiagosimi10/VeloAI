@@ -11,6 +11,8 @@ export interface AuthUser {
   role: string
   permissions: string[]
   mustChangePassword: boolean
+  tenantName: string
+  avatarUrl: string | null
 }
 
 interface RawMeResponse {
@@ -21,10 +23,26 @@ interface RawMeResponse {
   role: string
   permissions: string[]
   must_change_password: boolean
+  tenant_name: string
+  avatar_url: string | null
+}
+
+export interface UpdateProfilePayload {
+  firstName: string
+  lastName: string | null
 }
 
 interface LoginCredentials {
   email: string
+  password: string
+}
+
+export interface SignupPayload {
+  legalName: string
+  tradeName: string | null
+  document: string
+  adminName: string
+  adminEmail: string
   password: string
 }
 
@@ -49,6 +67,8 @@ function mapUser(raw: RawMeResponse): AuthUser {
     role: raw.role,
     permissions: raw.permissions,
     mustChangePassword: raw.must_change_password,
+    tenantName: raw.tenant_name,
+    avatarUrl: raw.avatar_url,
   }
 }
 
@@ -81,6 +101,32 @@ export const useAuthStore = defineStore('auth', {
           '/api/v1/auth/login',
           credentials,
         )
+        this.user = mapUser(response.data.data)
+        return true
+      } catch (error) {
+        this.user = null
+        this.error = this._extractErrorMessage(error)
+        return false
+      } finally {
+        this.isLoading = false
+        this.isBootstrapped = true
+      }
+    },
+
+    async signup(payload: SignupPayload): Promise<boolean> {
+      this.isLoading = true
+      this.error = null
+
+      try {
+        const response = await http.post<{ data: RawMeResponse }>('/api/v1/auth/signup', {
+          legal_name: payload.legalName,
+          trade_name: payload.tradeName,
+          document: payload.document,
+          admin_name: payload.adminName,
+          admin_email: payload.adminEmail,
+          password: payload.password,
+          website: '',
+        })
         this.user = mapUser(response.data.data)
         return true
       } catch (error) {
@@ -128,6 +174,47 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async updateProfile(payload: UpdateProfilePayload): Promise<boolean> {
+      this.isLoading = true
+      this.error = null
+
+      try {
+        await http.patch('/api/v1/auth/profile', {
+          first_name: payload.firstName,
+          last_name: payload.lastName || null,
+        })
+        if (this.user) {
+          this.user = { ...this.user, firstName: payload.firstName, lastName: payload.lastName }
+        }
+        return true
+      } catch (error) {
+        this.error = this._extractErrorMessage(error)
+        return false
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async uploadAvatar(file: File): Promise<boolean> {
+      this.error = null
+
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await http.post<{ data: { avatar_url: string | null } }>(
+          '/api/v1/auth/avatar',
+          formData,
+        )
+        if (this.user) {
+          this.user = { ...this.user, avatarUrl: response.data.data.avatar_url }
+        }
+        return true
+      } catch (error) {
+        this.error = this._extractErrorMessage(error)
+        return false
+      }
+    },
+
     async logout(): Promise<void> {
       try {
         await http.post('/api/v1/auth/logout')
@@ -146,7 +233,7 @@ export const useAuthStore = defineStore('auth', {
           return message
         }
         if (error.response?.status === 404) {
-          return 'Login ainda não está disponível nesta fase do sistema.'
+          return 'Este recurso ainda não está disponível nesta fase do sistema.'
         }
       }
       return 'Não foi possível conectar ao servidor. Tente novamente.'

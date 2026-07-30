@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { Building2, LogOut, ShieldCheck } from 'lucide-vue-next'
+import { Building2, LogOut, Moon, ShieldCheck, Sun } from 'lucide-vue-next'
+import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAdminAuthStore } from '@/stores/adminAuth'
+import { useThemeStore } from '@/stores/theme'
 
 const adminAuthStore = useAdminAuthStore()
+const themeStore = useThemeStore()
 const router = useRouter()
 const route = useRoute()
+
+onMounted(() => {
+  themeStore.initialize()
+})
 
 async function handleLogout(): Promise<void> {
   await adminAuthStore.logout()
@@ -25,16 +32,29 @@ function initials(email: string | undefined): string {
     <aside
       class="flex w-64 shrink-0 flex-col border-r border-black/5 bg-surface-light dark:border-white/10 dark:bg-surface-dark"
     >
-      <div class="flex h-16 items-center gap-2.5 border-b border-black/5 px-6 dark:border-white/10">
-        <div
-          class="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary-active text-white shadow-sm"
+      <div
+        class="flex h-16 items-center justify-between gap-2.5 border-b border-black/5 px-6 dark:border-white/10"
+      >
+        <div class="flex items-center gap-2.5">
+          <div
+            class="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary-active text-white shadow-sm"
+          >
+            <ShieldCheck :size="18" />
+          </div>
+          <div class="leading-tight">
+            <p class="text-sm font-bold text-text-primary dark:text-white">VeloAI</p>
+            <p class="text-[11px] text-text-secondary">Painel Administrativo</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          :aria-label="themeStore.mode === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'"
+          class="rounded-md p-2 text-text-secondary hover:bg-black/5 dark:hover:bg-white/10"
+          @click="themeStore.toggle()"
         >
-          <ShieldCheck :size="18" />
-        </div>
-        <div class="leading-tight">
-          <p class="text-sm font-bold text-text-primary dark:text-white">VeloAI</p>
-          <p class="text-[11px] text-text-secondary">Painel Administrativo</p>
-        </div>
+          <Sun v-if="themeStore.mode === 'dark'" :size="16" />
+          <Moon v-else :size="16" />
+        </button>
       </div>
 
       <nav class="flex-1 space-y-1 p-3">

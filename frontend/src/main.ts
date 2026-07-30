@@ -1,5 +1,7 @@
 import { createPinia } from 'pinia'
+import ConfirmationService from 'primevue/confirmationservice'
 import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
 import { createApp } from 'vue'
 
 import App from '@/App.vue'
@@ -21,5 +23,13 @@ app.use(PrimeVue, {
     },
   },
 })
+app.use(ToastService)
+app.use(ConfirmationService)
 
-app.mount('#app')
+// Só monta depois que a navegação inicial resolve — o guard em `router/index.ts` já
+// checou a sessão (`/auth/me`) e decidiu a rota final até aqui. Sem isso, o primeiro
+// paint mostraria a rota "otimista" (ex.: a casca do app) antes do guard redirecionar
+// quem não está logado pro /login.
+router.isReady().then(() => {
+  app.mount('#app')
+})

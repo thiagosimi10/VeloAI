@@ -14,10 +14,12 @@ from veloai_shared.security import verify_password
 from app.core.config import Settings
 from app.core.database import TenantConnectionManager
 from app.core.rate_limit import LoginRateLimiter
+from app.core.storage import StorageClient
 from app.modules.auth.repositories.login_history_repository import LoginHistoryRepository
 from app.modules.auth.repositories.refresh_token_repository import RefreshTokenRepository
 from app.modules.auth.repositories.user_repository import TenantUserRepository
 from app.modules.auth.services.token_service import TokenService
+from app.modules.auth.use_cases._helpers import resolve_avatar_url
 
 
 @dataclass(frozen=True)
@@ -31,6 +33,8 @@ class LoginResult:
     role: str
     permissions: list[str]
     must_change_password: bool
+    tenant_name: str
+    avatar_url: str | None
 
 
 class LoginUseCase:
@@ -41,11 +45,13 @@ class LoginUseCase:
         connection_manager: TenantConnectionManager,
         token_service: TokenService,
         rate_limiter: LoginRateLimiter,
+        storage_client: StorageClient,
     ) -> None:
         self._settings = settings
         self._connections = connection_manager
         self._tokens = token_service
         self._rate_limiter = rate_limiter
+        self._storage = storage_client
 
     async def execute(
         self, *, email: str, password: str, ip: str | None, user_agent: str | None
@@ -110,6 +116,7 @@ class LoginUseCase:
             await session.commit()
 
         await self._rate_limiter.reset(rate_limit_key)
+        avatar_url = await resolve_avatar_url(self._storage, user.avatar_key)
 
         return LoginResult(
             access_token=access_token,
@@ -121,4 +128,6 @@ class LoginUseCase:
             role=role,
             permissions=permissions,
             must_change_password=user.force_password_change,
+            tenant_name=tenant.trade_name or tenant.legal_name,
+            avatar_url=avatar_url,
         )

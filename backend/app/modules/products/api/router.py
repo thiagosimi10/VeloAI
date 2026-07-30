@@ -6,11 +6,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
+from veloai_shared.exceptions import ValidationError
 from veloai_shared.responses import SuccessResponse
 
 from app.core.database import TenantConnectionManager, get_tenant_connection_manager
 from app.core.dependencies import CurrentUser, require_permission
+from app.core.import_result import ImportResultResponse, to_import_result_response
 from app.modules.products.permissions import (
     PRODUCTS_CREATE,
     PRODUCTS_DELETE,
@@ -36,6 +38,7 @@ from app.modules.products.use_cases.adjust_product_stock_use_case import (
 from app.modules.products.use_cases.create_product_use_case import CreateProductUseCase
 from app.modules.products.use_cases.delete_product_use_case import DeleteProductUseCase
 from app.modules.products.use_cases.get_product_use_case import GetProductUseCase
+from app.modules.products.use_cases.import_products_use_case import ImportProductsUseCase
 from app.modules.products.use_cases.list_products_use_case import ListProductsUseCase
 from app.modules.products.use_cases.list_stock_movements_use_case import (
     ListStockMovementsUseCase,
@@ -43,6 +46,8 @@ from app.modules.products.use_cases.list_stock_movements_use_case import (
 from app.modules.products.use_cases.update_product_use_case import UpdateProductUseCase
 
 router = APIRouter(prefix="/products", tags=["products"])
+
+_MAX_IMPORT_FILE_SIZE_BYTES = 5 * 1024 * 1024
 
 
 @router.get("")
@@ -91,6 +96,32 @@ async def create_product(
         payload=payload,
     )
     return SuccessResponse(message="Produto criado com sucesso.", data=product)
+
+
+@router.post("/import")
+async def import_products(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(require_permission(PRODUCTS_CREATE)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[ImportResultResponse]:
+    data = await file.read()
+    if len(data) > _MAX_IMPORT_FILE_SIZE_BYTES:
+        raise ValidationError(
+            "Arquivo muito grande. O limite é 5MB.", code="IMPORT_FILE_TOO_LARGE"
+        )
+
+    use_case = ImportProductsUseCase(connection_manager=connection_manager)
+    result = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        actor_user_id=current_user.user_id,
+        filename=file.filename or "arquivo",
+        data=data,
+    )
+    return SuccessResponse(
+        message=f"{result.created} de {result.total_rows} produto(s) importado(s).",
+        data=to_import_result_response(result),
+    )
 
 
 @router.patch("/{product_id}")

@@ -4,6 +4,8 @@ import InputNumber from 'primevue/inputnumber'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -21,6 +23,8 @@ const productsStore = useProductsStore()
 const servicesStore = useServicesStore()
 const route = useRoute()
 const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
 
 const orderId = computed(() => route.params.id as string)
 const order = ref<ServiceOrder | null>(null)
@@ -131,20 +135,27 @@ async function handleAddItem(): Promise<void> {
   }
 }
 
-async function handleRemoveItem(itemId: string): Promise<void> {
-  if (!window.confirm('Remover este item da Ordem de Serviço?')) {
-    return
-  }
-  const success = await store.removeItem(orderId.value, itemId)
-  if (success) {
-    await loadData()
-  }
+function handleRemoveItem(itemId: string): void {
+  confirm.require({
+    header: 'Remover item',
+    message: 'Remover este item da Ordem de Serviço?',
+    acceptProps: { label: 'Remover', severity: 'danger' },
+    rejectProps: { label: 'Cancelar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const success = await store.removeItem(orderId.value, itemId)
+      if (success) {
+        toast.add({ severity: 'success', summary: 'Item removido', life: 3000 })
+        await loadData()
+      }
+    },
+  })
 }
 
 async function handleStart(): Promise<void> {
   const result = await store.startOrder(orderId.value)
   if (result) {
     order.value = result
+    toast.add({ severity: 'success', summary: 'Ordem de serviço iniciada', life: 3000 })
   }
 }
 
@@ -156,17 +167,24 @@ async function handleClose(): Promise<void> {
   if (result) {
     order.value = result
     await productsStore.fetchProducts()
+    toast.add({ severity: 'success', summary: 'Ordem de serviço concluída', life: 3000 })
   }
 }
 
-async function handleCancel(): Promise<void> {
-  if (!window.confirm('Cancelar esta Ordem de Serviço?')) {
-    return
-  }
-  const result = await store.cancelOrder(orderId.value)
-  if (result) {
-    order.value = result
-  }
+function handleCancel(): void {
+  confirm.require({
+    header: 'Cancelar ordem de serviço',
+    message: 'Cancelar esta Ordem de Serviço? Esta ação não pode ser desfeita.',
+    acceptProps: { label: 'Cancelar OS', severity: 'danger' },
+    rejectProps: { label: 'Voltar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const result = await store.cancelOrder(orderId.value)
+      if (result) {
+        order.value = result
+        toast.add({ severity: 'success', summary: 'Ordem de serviço cancelada', life: 3000 })
+      }
+    },
+  })
 }
 </script>
 

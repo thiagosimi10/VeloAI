@@ -12,6 +12,14 @@ from pydantic import BaseModel, Field
 
 class AskAIRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=4000)
+    upload_id: str | None = None
+
+
+class AiUploadResponse(BaseModel):
+    upload_id: str
+    filename: str
+    row_count: int
+    headers: list[str]
 
 
 class AskAIResponse(BaseModel):

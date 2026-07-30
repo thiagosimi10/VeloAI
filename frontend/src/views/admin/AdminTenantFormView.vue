@@ -3,14 +3,17 @@ import { ArrowLeft, Building2, Check, Copy, KeyRound } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { type TenantProvisioned, useAdminStore } from '@/stores/admin'
+import { formatDocumentInput } from '@/utils/mask'
 
 const store = useAdminStore()
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 
 const tenantId = computed(() => (typeof route.params.id === 'string' ? route.params.id : null))
 const isEditing = computed(() => tenantId.value !== null)
@@ -24,6 +27,13 @@ const form = reactive({
   document: '',
   adminName: '',
   adminEmail: '',
+})
+
+const documentDisplay = computed({
+  get: () => form.document,
+  set: (value: string) => {
+    form.document = formatDocumentInput(value)
+  },
 })
 
 onMounted(async () => {
@@ -52,6 +62,7 @@ async function handleSubmit(): Promise<void> {
     })
     isLoading.value = false
     if (success) {
+      toast.add({ severity: 'success', summary: 'Empresa atualizada', life: 3000 })
       await router.push({ name: 'admin-tenants' })
     }
     return
@@ -198,7 +209,7 @@ async function copyPassword(): Promise<void> {
           </label>
           <InputText
             id="tenant-document"
-            v-model="form.document"
+            v-model="documentDisplay"
             class="w-full"
             placeholder="00.000.000/0000-00"
             required

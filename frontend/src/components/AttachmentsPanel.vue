@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Paperclip } from 'lucide-vue-next'
 import Button from 'primevue/button'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { onMounted, ref, watch } from 'vue'
 
 import { type AttachmentResourceType, useAttachmentsStore } from '@/stores/attachments'
@@ -11,6 +13,8 @@ const props = defineProps<{
 }>()
 
 const store = useAttachmentsStore()
+const confirm = useConfirm()
+const toast = useToast()
 const fileInput = ref<HTMLInputElement | null>(null)
 const isUploading = ref(false)
 
@@ -47,14 +51,20 @@ async function handleFileSelected(event: Event): Promise<void> {
   await loadAttachments()
 }
 
-async function handleRemove(id: string): Promise<void> {
-  if (!window.confirm('Remover este anexo?')) {
-    return
-  }
-  const success = await store.deleteAttachment(id)
-  if (success) {
-    await loadAttachments()
-  }
+function handleRemove(id: string): void {
+  confirm.require({
+    header: 'Remover anexo',
+    message: 'Remover este anexo?',
+    acceptProps: { label: 'Remover', severity: 'danger' },
+    rejectProps: { label: 'Cancelar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const success = await store.deleteAttachment(id)
+      if (success) {
+        toast.add({ severity: 'success', summary: 'Anexo removido', life: 3000 })
+        await loadAttachments()
+      }
+    },
+  })
 }
 </script>
 

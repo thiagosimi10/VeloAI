@@ -21,9 +21,27 @@ interface RawSubscription {
   days_remaining: number | null
 }
 
+export interface PlanTier {
+  cycle: string
+  label: string
+  months: number
+  monthlyPrice: string
+  totalPrice: string
+}
+
+interface RawPlanTier {
+  cycle: string
+  label: string
+  months: number
+  monthly_price: string
+  total_price: string
+}
+
 interface BillingState {
   subscription: Subscription | null
+  planTiers: PlanTier[]
   isLoading: boolean
+  isCheckingOut: boolean
   error: string | null
 }
 
@@ -35,6 +53,16 @@ function mapSubscription(raw: RawSubscription): Subscription {
     trialEndsAt: raw.trial_ends_at,
     currentPeriodEndsAt: raw.current_period_ends_at,
     daysRemaining: raw.days_remaining,
+  }
+}
+
+function mapPlanTier(raw: RawPlanTier): PlanTier {
+  return {
+    cycle: raw.cycle,
+    label: raw.label,
+    months: raw.months,
+    monthlyPrice: raw.monthly_price,
+    totalPrice: raw.total_price,
   }
 }
 
@@ -51,7 +79,9 @@ function extractErrorMessage(error: unknown): string {
 export const useBillingStore = defineStore('billing', {
   state: (): BillingState => ({
     subscription: null,
+    planTiers: [],
     isLoading: false,
+    isCheckingOut: false,
     error: null,
   }),
   actions: {
@@ -79,6 +109,48 @@ export const useBillingStore = defineStore('billing', {
       } catch (error) {
         this.error = extractErrorMessage(error)
         return false
+      }
+    },
+
+    async fetchPlanTiers(): Promise<void> {
+      this.error = null
+
+      try {
+        const response = await http.get<{ data: RawPlanTier[] }>('/api/v1/billing/plans')
+        this.planTiers = response.data.data.map(mapPlanTier)
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+      }
+    },
+
+    /** Mesmos dados de `fetchPlanTiers`, mas sem exigir sessão — usado pelas páginas
+     * públicas de marketing, que nunca devem mostrar um preço diferente do checkout. */
+    async fetchPublicPlanTiers(): Promise<void> {
+      this.error = null
+
+      try {
+        const response = await http.get<{ data: RawPlanTier[] }>('/api/v1/billing/public/plans')
+        this.planTiers = response.data.data.map(mapPlanTier)
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+      }
+    },
+
+    async createCheckout(cycle: string): Promise<string | null> {
+      this.isCheckingOut = true
+      this.error = null
+
+      try {
+        const response = await http.post<{ data: { checkout_url: string } }>(
+          '/api/v1/billing/checkout',
+          { cycle },
+        )
+        return response.data.data.checkout_url
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return null
+      } finally {
+        this.isCheckingOut = false
       }
     },
   },

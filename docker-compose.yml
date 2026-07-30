@@ -88,11 +88,16 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: backend/Dockerfile.dev
     restart: unless-stopped
     env_file: .env
     ports:
       - "8000:8000"
+    volumes:
+      # Código-fonte montado do host — qualquer alteração salva já reinicia o uvicorn
+      # sozinho (--reload), sem precisar rebuildar a imagem.
+      - ./backend/app:/srv/backend/app
+      - ./shared:/srv/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -128,24 +133,24 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
-      # VITE_API_URL é embutida no bundle estático em tempo de build (Vite não lê
-      # variáveis de ambiente em runtime) — por isso é passada como build arg, não
-      # via env_file, que não teria nenhum efeito sobre os arquivos já construídos.
-      args:
-        VITE_API_URL: ${VITE_API_URL}
+      dockerfile: frontend/Dockerfile.dev
     restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     ports:
-      - "5173:80"
+      - "5173:5173"
+    volumes:
+      # Código-fonte montado do host — qualquer alteração salva já dispara o hot-reload
+      # do Vite dentro do container, sem precisar rebuildar a imagem.
+      - ./frontend:/srv/frontend
+      # Volume nomeado só para node_modules: evita que o node_modules instalado no
+      # Windows (fora do container) sobrescreva o instalado no Linux dentro dele.
+      - frontend_node_modules:/srv/frontend/node_modules
     depends_on:
       - backend
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
 
 volumes:
   postgres_data:
   minio_data:
   qdrant_data:
+  frontend_node_modules:

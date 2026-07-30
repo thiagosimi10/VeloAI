@@ -4,37 +4,36 @@ import {
   Bot,
   Boxes,
   Check,
-  ClipboardList,
   Handshake,
   LayoutDashboard,
   Lock,
   Mail,
   MessageCircle,
-  Moon,
+  Plus,
   ShieldCheck,
   Sparkles,
-  Sun,
   Users,
   Wrench,
 } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
 
-import { useAuthStore } from '@/stores/auth'
+import MarketingFooter from '@/components/marketing/MarketingFooter.vue'
+import MarketingHeader from '@/components/marketing/MarketingHeader.vue'
+import { mailtoLink, whatsappLink } from '@/config/contact'
+import { useBillingStore } from '@/stores/billing'
 import { useThemeStore } from '@/stores/theme'
 
-const authStore = useAuthStore()
 const themeStore = useThemeStore()
-const router = useRouter()
+const billingStore = useBillingStore()
 
-// Placeholder — trocar pelo número real de WhatsApp comercial antes de divulgar o link.
-const WHATSAPP_NUMBER = '5500000000000'
-const CONTACT_EMAIL = 'thiagosimi10@gmail.com'
-const WHATSAPP_MESSAGE = encodeURIComponent(
-  'Olá! Quero conhecer o VeloAI e testar por 14 dias grátis.',
-)
-const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MESSAGE}`
-const mailtoLink = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Quero conhecer o VeloAI')}`
+// Preço-base exibido enquanto `/billing/public/plans` carrega (ou se falhar) — nunca
+// fica em branco, mas assim que a API responde, o valor real do checkout assume.
+const monthlyPrice = computed(() => {
+  const monthly = billingStore.planTiers.find((tier) => tier.cycle === 'MONTHLY')
+  return monthly
+    ? Number(monthly.monthlyPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+    : '129,90'
+})
 
 const features = [
   {
@@ -123,70 +122,15 @@ function toggleFaq(index: number): void {
   }
 }
 
-function goToLogin(): void {
-  router.push({ name: 'login' })
-}
-
-function goToDashboard(): void {
-  router.push({ name: 'dashboard' })
-}
-
 onMounted(() => {
   themeStore.initialize()
+  void billingStore.fetchPublicPlanTiers()
 })
 </script>
 
 <template>
   <div class="min-h-screen bg-background-light text-text-primary dark:bg-background-dark dark:text-white">
-    <!-- Header -->
-    <header
-      class="sticky top-0 z-40 border-b border-black/5 bg-surface-light/80 backdrop-blur dark:border-white/10 dark:bg-surface-dark/80"
-    >
-      <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <div class="flex items-center gap-2">
-          <div
-            class="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary-active text-white"
-          >
-            <Sparkles :size="18" />
-          </div>
-          <span class="text-lg font-bold text-text-primary dark:text-white">VeloAI</span>
-        </div>
-
-        <nav class="hidden items-center gap-6 text-sm font-medium text-text-secondary md:flex">
-          <a href="#recursos" class="transition-colors hover:text-primary">Recursos</a>
-          <a href="#precos" class="transition-colors hover:text-primary">Preços</a>
-          <a href="#faq" class="transition-colors hover:text-primary">Perguntas Frequentes</a>
-        </nav>
-
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="Alternar tema"
-            class="rounded-md p-2 text-text-secondary transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-            @click="themeStore.toggle()"
-          >
-            <Moon v-if="themeStore.mode === 'light'" :size="18" />
-            <Sun v-else :size="18" />
-          </button>
-          <button
-            v-if="authStore.isAuthenticated"
-            type="button"
-            class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
-            @click="goToDashboard"
-          >
-            Ir para o Painel
-          </button>
-          <button
-            v-else
-            type="button"
-            class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-primary"
-            @click="goToLogin"
-          >
-            Entrar
-          </button>
-        </div>
-      </div>
-    </header>
+    <MarketingHeader />
 
     <!-- Hero -->
     <section class="relative overflow-hidden">
@@ -351,7 +295,7 @@ onMounted(() => {
 
           <p class="text-sm font-medium text-text-secondary">VeloAI Professional</p>
           <p class="mt-1 flex items-baseline gap-1">
-            <span class="text-4xl font-bold text-text-primary dark:text-white">R$ 129,90</span>
+            <span class="text-4xl font-bold text-text-primary dark:text-white">R$ {{ monthlyPrice }}</span>
             <span class="text-text-secondary">/mês</span>
           </p>
 
@@ -413,12 +357,11 @@ onMounted(() => {
             @click="toggleFaq(index)"
           >
             {{ faq.question }}
-            <span
+            <Plus
+              :size="16"
               class="ml-4 shrink-0 text-text-secondary transition-transform duration-150"
               :class="{ 'rotate-45': faq.open }"
-            >
-              +
-            </span>
+            />
           </button>
           <div v-show="faq.open" class="px-5 pb-4 text-sm text-text-secondary">
             {{ faq.answer }}
@@ -458,17 +401,6 @@ onMounted(() => {
       </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="border-t border-black/5 py-8 dark:border-white/10">
-      <div
-        class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-text-secondary md:flex-row"
-      >
-        <div class="flex items-center gap-2">
-          <ClipboardList :size="14" />
-          <span>© {{ new Date().getFullYear() }} VeloAI. Todos os direitos reservados.</span>
-        </div>
-        <a :href="mailtoLink" class="hover:text-primary">{{ CONTACT_EMAIL }}</a>
-      </div>
-    </footer>
+    <MarketingFooter />
   </div>
 </template>

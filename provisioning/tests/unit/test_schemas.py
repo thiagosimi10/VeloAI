@@ -44,3 +44,25 @@ def test_create_tenant_request_accepts_cpf() -> None:
     )
 
     assert request.document == "12345678901"
+
+
+def test_create_tenant_request_password_defaults_to_none() -> None:
+    request = CreateTenantRequest(
+        legal_name="Empresa Teste LTDA",
+        document="12345678901",
+        admin_name="João Silva",
+        admin_email="joao@empresa.test",
+    )
+
+    assert request.password is None
+
+
+def test_create_tenant_request_rejects_short_password() -> None:
+    with pytest.raises(ValidationError):
+        CreateTenantRequest(
+            legal_name="Empresa Teste LTDA",
+            document="12345678901",
+            admin_name="João Silva",
+            admin_email="joao@empresa.test",
+            password="1234567",
+        )

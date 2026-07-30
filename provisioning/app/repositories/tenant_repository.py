@@ -56,6 +56,12 @@ class TenantRepository:
         await self._session.flush()
         return subscription
 
+    async def get_user_index_by_email(self, email: str) -> TenantUserIndex | None:
+        result = await self._session.execute(
+            select(TenantUserIndex).where(TenantUserIndex.email == email)
+        )
+        return result.scalar_one_or_none()
+
     async def add_user_index(self, *, email: str, tenant_id: uuid.UUID) -> TenantUserIndex:
         """Registra a entrada de roteamento de login (e-mail → tenant) no Banco Master,
         conforme o fluxo obrigatório de 04-MULTI-TENANCY.md."""

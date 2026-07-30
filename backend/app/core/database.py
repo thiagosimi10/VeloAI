@@ -65,6 +65,13 @@ class TenantConnectionManager:
                 return None
             return await session.get(Tenant, tenant_id)
 
+    async def get_tenant_by_id(self, tenant_id: uuid.UUID) -> Tenant | None:
+        """Usado quando só se tem o `tenant_id` das claims do JWT (ex.: `GET /auth/me`)
+        e é preciso exibir dados do tenant (nome) que só existem no Banco Master."""
+
+        async with get_master_session() as session:
+            return await session.get(Tenant, tenant_id)
+
     @asynccontextmanager
     async def session_for_tenant(
         self, tenant_id: uuid.UUID, database_name: str

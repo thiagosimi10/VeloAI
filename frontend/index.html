@@ -2,9 +2,54 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="data:," />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VeloAI</title>
+    <title>VeloAI — Gestão Inteligente para o seu Negócio</title>
+    <!--
+      Aplica o tema escuro (padrão) antes do primeiro paint, sem esperar o Vue montar —
+      evita um flash de tela clara. Mesma leitura de localStorage que
+      `stores/theme.ts` faz depois; se essa chave mudar de nome lá, tem que mudar aqui
+      também.
+    -->
+    <script>
+      ;(function () {
+        var stored = localStorage.getItem('veloai:theme')
+        if (stored !== 'light') {
+          document.documentElement.classList.add('dark')
+        }
+      })()
+    </script>
+    <style>
+      html.dark body {
+        background-color: #0f172a;
+      }
+
+      /* Spinner some sozinho assim que o Vue popula #app — sem JS de limpeza. */
+      #app:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      #app:empty::before {
+        content: '';
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-top-color: #7c3aed;
+        animation: veloai-spin 0.8s linear infinite;
+      }
+      html.dark #app:empty::before {
+        border-color: rgba(255, 255, 255, 0.15);
+        border-top-color: #7c3aed;
+      }
+      @keyframes veloai-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>

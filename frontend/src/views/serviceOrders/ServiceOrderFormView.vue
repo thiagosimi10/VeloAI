@@ -4,6 +4,7 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -15,6 +16,7 @@ const store = useServiceOrdersStore()
 const customersStore = useCustomersStore()
 const usersStore = useUsersStore()
 const router = useRouter()
+const toast = useToast()
 const isLoading = ref(false)
 
 const form = reactive<ServiceOrderFormPayload>({
@@ -48,6 +50,7 @@ async function handleSubmit(): Promise<void> {
   isLoading.value = false
 
   if (result) {
+    toast.add({ severity: 'success', summary: 'Ordem de serviço criada', life: 3000 })
     await router.push({ name: 'service-orders-detail', params: { id: result.id } })
   }
 }

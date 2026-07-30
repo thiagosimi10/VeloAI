@@ -2,6 +2,7 @@ import { isAxiosError } from 'axios'
 import { defineStore } from 'pinia'
 
 import { http } from '@/services/http'
+import { type ImportResult, type RawImportResult, mapImportResult } from '@/types/import'
 
 export type SupplierType = 'PF' | 'PJ'
 
@@ -238,6 +239,22 @@ export const useSuppliersStore = defineStore('suppliers', {
       } catch (error) {
         this.error = extractErrorMessage(error)
         return false
+      }
+    },
+
+    async importSuppliers(file: File): Promise<ImportResult | null> {
+      this.error = null
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await http.post<{ data: RawImportResult }>(
+          '/api/v1/suppliers/import',
+          formData,
+        )
+        return mapImportResult(response.data.data)
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return null
       }
     },
   },

@@ -17,6 +17,7 @@ class CreateServiceRequest(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
     estimated_time: int | None = Field(default=None, ge=0)
     price: Decimal = Field(ge=0)
+    active: bool = True
 
 
 class UpdateServiceRequest(BaseModel):

@@ -25,9 +25,51 @@ const router = createRouter({
       meta: { layout: 'marketing', requiresAuth: false },
     },
     {
+      path: '/cadastro',
+      name: 'signup',
+      component: () => import('@/views/SignupFormView.vue'),
+      meta: { layout: 'marketing', requiresAuth: false },
+    },
+    {
+      path: '/comece-agora',
+      name: 'signup-guide',
+      component: () => import('@/views/SignupGuideView.vue'),
+      meta: { layout: 'marketing', requiresAuth: false },
+    },
+    {
+      path: '/privacidade',
+      name: 'privacy-policy',
+      component: () => import('@/views/legal/PrivacyPolicyView.vue'),
+      meta: { layout: 'marketing', requiresAuth: false },
+    },
+    {
+      path: '/termos-de-uso',
+      name: 'terms-of-service',
+      component: () => import('@/views/legal/TermsOfServiceView.vue'),
+      meta: { layout: 'marketing', requiresAuth: false },
+    },
+    {
+      path: '/cookies',
+      name: 'cookie-policy',
+      component: () => import('@/views/legal/CookiePolicyView.vue'),
+      meta: { layout: 'marketing', requiresAuth: false },
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/views/ProfileView.vue'),
+      meta: { layout: 'default', requiresAuth: true },
+    },
+    {
+      path: '/company-settings',
+      name: 'company-settings',
+      component: () => import('@/views/CompanySettingsView.vue'),
       meta: { layout: 'default', requiresAuth: true },
     },
     {

@@ -6,11 +6,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
+from veloai_shared.exceptions import ValidationError
 from veloai_shared.responses import SuccessResponse
 
 from app.core.database import TenantConnectionManager, get_tenant_connection_manager
 from app.core.dependencies import CurrentUser, require_permission
+from app.core.import_result import ImportResultResponse, to_import_result_response
 from app.modules.suppliers.permissions import (
     SUPPLIERS_CREATE,
     SUPPLIERS_DELETE,
@@ -26,10 +28,13 @@ from app.modules.suppliers.schemas.supplier import (
 from app.modules.suppliers.use_cases.create_supplier_use_case import CreateSupplierUseCase
 from app.modules.suppliers.use_cases.delete_supplier_use_case import DeleteSupplierUseCase
 from app.modules.suppliers.use_cases.get_supplier_use_case import GetSupplierUseCase
+from app.modules.suppliers.use_cases.import_suppliers_use_case import ImportSuppliersUseCase
 from app.modules.suppliers.use_cases.list_suppliers_use_case import ListSuppliersUseCase
 from app.modules.suppliers.use_cases.update_supplier_use_case import UpdateSupplierUseCase
 
 router = APIRouter(prefix="/suppliers", tags=["suppliers"])
+
+_MAX_IMPORT_FILE_SIZE_BYTES = 5 * 1024 * 1024
 
 
 @router.get("")
@@ -78,6 +83,32 @@ async def create_supplier(
         payload=payload,
     )
     return SuccessResponse(message="Fornecedor criado com sucesso.", data=supplier)
+
+
+@router.post("/import")
+async def import_suppliers(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(require_permission(SUPPLIERS_CREATE)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[ImportResultResponse]:
+    data = await file.read()
+    if len(data) > _MAX_IMPORT_FILE_SIZE_BYTES:
+        raise ValidationError(
+            "Arquivo muito grande. O limite é 5MB.", code="IMPORT_FILE_TOO_LARGE"
+        )
+
+    use_case = ImportSuppliersUseCase(connection_manager=connection_manager)
+    result = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        actor_user_id=current_user.user_id,
+        filename=file.filename or "arquivo",
+        data=data,
+    )
+    return SuccessResponse(
+        message=f"{result.created} de {result.total_rows} fornecedor(es) importado(s).",
+        data=to_import_result_response(result),
+    )
 
 
 @router.patch("/{supplier_id}")

@@ -20,12 +20,14 @@ class ListTenantsResult:
 
 
 class ListTenantsUseCase:
-    async def execute(self, *, page: int, page_size: int) -> ListTenantsResult:
+    async def execute(
+        self, *, page: int, page_size: int, search: str | None = None
+    ) -> ListTenantsResult:
         async with get_master_session() as session:
             repository = AdminRepository(session)
 
-            total = await repository.count_tenants()
-            tenants = await repository.list_tenants(page=page, page_size=page_size)
+            total = await repository.count_tenants(search=search)
+            tenants = await repository.list_tenants(page=page, page_size=page_size, search=search)
 
             plan_ids = {tenant.plan_id for tenant in tenants if tenant.plan_id is not None}
             tenant_ids = {tenant.id for tenant in tenants}

@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from veloai_shared.exceptions import AuthenticationError
 
 from app.core.database import TenantConnectionManager
+from app.core.storage import StorageClient
 from app.modules.auth.repositories.user_repository import TenantUserRepository
+from app.modules.auth.use_cases._helpers import resolve_avatar_url
 
 
 @dataclass(frozen=True)
@@ -21,11 +23,16 @@ class MeResult:
     role: str
     permissions: list[str]
     must_change_password: bool
+    tenant_name: str
+    avatar_url: str | None
 
 
 class MeUseCase:
-    def __init__(self, *, connection_manager: TenantConnectionManager) -> None:
+    def __init__(
+        self, *, connection_manager: TenantConnectionManager, storage_client: StorageClient
+    ) -> None:
         self._connections = connection_manager
+        self._storage = storage_client
 
     async def execute(
         self, *, tenant_id: uuid.UUID, database_name: str, user_id: uuid.UUID
@@ -38,13 +45,27 @@ class MeUseCase:
 
             role = await user_repository.get_role_name(user.role_id) or ""
             permissions = await user_repository.get_role_permissions(user.role_id)
-
-            return MeResult(
-                id=user.id,
-                email=user.email,
-                first_name=user.first_name,
-                last_name=user.last_name,
-                role=role,
-                permissions=permissions,
-                must_change_password=user.force_password_change,
+            user_id_, email, first_name, last_name, must_change_password, avatar_key = (
+                user.id,
+                user.email,
+                user.first_name,
+                user.last_name,
+                user.force_password_change,
+                user.avatar_key,
             )
+
+        tenant = await self._connections.get_tenant_by_id(tenant_id)
+        tenant_name = (tenant.trade_name or tenant.legal_name) if tenant else ""
+        avatar_url = await resolve_avatar_url(self._storage, avatar_key)
+
+        return MeResult(
+            id=user_id_,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            permissions=permissions,
+            must_change_password=must_change_password,
+            tenant_name=tenant_name,
+            avatar_url=avatar_url,
+        )

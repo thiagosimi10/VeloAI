@@ -1,20 +1,36 @@
 <script setup lang="ts">
-import { FlexRender, createColumnHelper, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
-import { Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import {
+  FlexRender,
+  createColumnHelper,
+  getCoreRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useVueTable,
+} from '@tanstack/vue-table'
+import { Pencil, Plus, Trash2, Wrench } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
 import Select from 'primevue/select'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import EmptyState from '@/components/data/EmptyState.vue'
+import SortableHeader from '@/components/data/SortableHeader.vue'
+import TableSkeleton from '@/components/data/TableSkeleton.vue'
 import { useCategoriesStore } from '@/stores/categories'
 import { type Service, useServicesStore } from '@/stores/services'
 
 const store = useServicesStore()
 const categoriesStore = useCategoriesStore()
 const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
 const searchInput = ref('')
 const categoryFilter = ref<string | null>(null)
+const sorting = ref<SortingState>([])
 
 const categoryNameById = computed(() => {
   const map = new Map<string, string>()
@@ -41,8 +57,9 @@ const columns = [
     (row) => (row.categoryId ? categoryNameById.value.get(row.categoryId) : null) ?? '—',
     { id: 'category', header: 'Categoria' },
   ),
-  columnHelper.accessor((row) => formatCurrency(row.price), { id: 'price', header: 'Valor' }),
-  columnHelper.display({ id: 'actions', header: 'Ações' }),
+  columnHelper.accessor('price', { header: 'Valor', cell: (info) => formatCurrency(info.getValue()) }),
+  columnHelper.accessor('active', { header: 'Status' }),
+  columnHelper.display({ id: 'actions', header: 'Ações', enableSorting: false }),
 ]
 
 const table = useVueTable({
@@ -50,7 +67,16 @@ const table = useVueTable({
     return store.items
   },
   columns,
+  state: {
+    get sorting() {
+      return sorting.value
+    },
+  },
+  onSortingChange: (updater) => {
+    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
+  },
   getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
 })
 
 onMounted(() => {
@@ -76,14 +102,27 @@ function goToEditService(id: string): void {
   router.push({ name: 'services-edit', params: { id } })
 }
 
-async function handleDelete(id: string, name: string): Promise<void> {
-  if (!window.confirm(`Excluir o serviço "${name}"?`)) {
-    return
-  }
-  const success = await store.deleteService(id)
-  if (success) {
-    await store.fetchServices()
-  }
+function handleDelete(id: string, name: string): void {
+  confirm.require({
+    header: 'Excluir serviço',
+    message: `Excluir o serviço "${name}"? Esta ação não pode ser desfeita.`,
+    acceptProps: { label: 'Excluir', severity: 'danger' },
+    rejectProps: { label: 'Cancelar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const success = await store.deleteService(id)
+      if (success) {
+        toast.add({ severity: 'success', summary: 'Serviço excluído', life: 3000 })
+        await store.fetchServices()
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: 'Não foi possível excluir',
+          detail: store.error ?? undefined,
+          life: 4000,
+        })
+      }
+    },
+  })
 }
 
 const hasPreviousPage = computed(() => store.meta.page > 1)
@@ -140,7 +179,7 @@ function goToNextPage(): void {
       />
     </div>
 
-    <p v-if="store.error" class="text-sm text-danger">{{ store.error }}</p>
+    <Message v-if="store.error" severity="error" :closable="false">{{ store.error }}</Message>
 
     <div class="overflow-x-auto rounded-lg border border-black/10 dark:border-white/10">
       <table class="w-full text-left text-sm">
@@ -151,18 +190,20 @@ function goToNextPage(): void {
               :key="header.id"
               class="px-4 py-2 font-medium text-text-secondary"
             >
-              <FlexRender
-                v-if="!header.isPlaceholder"
-                :render="header.column.columnDef.header"
-                :props="header.getContext()"
-              />
+              <SortableHeader :header="header" />
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="store.items.length === 0">
-            <td colspan="5" class="px-4 py-6 text-center text-text-secondary">
-              {{ store.isLoading ? 'Carregando...' : 'Nenhum serviço encontrado.' }}
+          <TableSkeleton v-if="store.isLoading && store.items.length === 0" :columns="6" />
+          <tr v-else-if="store.items.length === 0">
+            <td colspan="6">
+              <EmptyState
+                :icon="Wrench"
+                message="Nenhum serviço encontrado."
+                action-label="Novo Serviço"
+                @action="goToNewService"
+              />
             </td>
           </tr>
           <tr
@@ -171,7 +212,18 @@ function goToNextPage(): void {
             class="border-t border-black/5 dark:border-white/10"
           >
             <td v-for="cell in row.getVisibleCells()" :key="cell.id" class="px-4 py-2">
-              <div v-if="cell.column.id === 'actions'" class="flex gap-3">
+              <span
+                v-if="cell.column.id === 'active'"
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                :class="row.original.active ? 'bg-success/10 text-success' : 'bg-black/5 text-text-secondary dark:bg-white/10'"
+              >
+                <span
+                  class="h-1.5 w-1.5 rounded-full"
+                  :class="row.original.active ? 'bg-success' : 'bg-text-secondary'"
+                />
+                {{ row.original.active ? 'Ativo' : 'Inativo' }}
+              </span>
+              <div v-else-if="cell.column.id === 'actions'" class="flex gap-3">
                 <button
                   type="button"
                   :aria-label="`Editar ${row.original.name}`"

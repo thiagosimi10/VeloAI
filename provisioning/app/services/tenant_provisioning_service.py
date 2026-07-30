@@ -10,6 +10,8 @@ erro original."""
 from __future__ import annotations
 
 import asyncio
+import re
+import unicodedata
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -31,6 +33,19 @@ from app.services.qdrant_provisioning_service import QdrantProvisioningService
 from app.services.seed_service import TenantSeedService
 
 logger = get_logger(__name__)
+
+
+def _slugify_first_word(name: str) -> str:
+    """Extrai a primeira palavra do nome da empresa e normaliza (sem acento, minúscula,
+    só a-z0-9) pra virar um sufixo legível no nome do banco — ex.: "Nestlé Brasil" vira
+    "nestle", compondo `tenant_<short_id>_nestle`. Só facilita identificar o banco a
+    olho nu; a unicidade continua garantida pelo `short_id` (derivado do UUID do
+    tenant), nunca pelo slug — dois tenants podem gerar o mesmo slug sem colidir."""
+
+    first_word = name.strip().split()[0] if name.strip() else ""
+    decomposed = unicodedata.normalize("NFKD", first_word)
+    without_accents = "".join(char for char in decomposed if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]", "", without_accents.lower())[:20]
 
 
 class TenantProvisioningService:
@@ -57,8 +72,18 @@ class TenantProvisioningService:
                     code="TENANT_ALREADY_EXISTS",
                 )
 
+            existing_user = await repository.get_user_index_by_email(payload.admin_email)
+            if existing_user is not None:
+                raise ConflictError(
+                    "Este e-mail já está em uso.",
+                    code="EMAIL_ALREADY_EXISTS",
+                )
+
             tenant_id = new_uuid7()
             database_name = f"{self._settings.tenant_database_prefix}{short_id(tenant_id)}"
+            company_slug = _slugify_first_word(payload.trade_name or payload.legal_name)
+            if company_slug:
+                database_name = f"{database_name}_{company_slug}"
 
             tenant = Tenant(
                 id=tenant_id,
@@ -91,6 +116,7 @@ class TenantProvisioningService:
                     document=payload.document,
                     admin_name=payload.admin_name,
                     admin_email=payload.admin_email,
+                    password=payload.password,
                 )
 
                 plan = await repository.get_active_plan()

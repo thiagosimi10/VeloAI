@@ -10,8 +10,14 @@ from app.core.ai_tools import AITool
 from app.modules.billing.mcp_tools.get_subscription_status_tool import (
     GetSubscriptionStatusTool,
 )
+from app.modules.categories.mcp_tools.import_categories_from_file_tool import (
+    ImportCategoriesFromFileTool,
+)
 from app.modules.customers.mcp_tools.create_customer_tool import CreateCustomerTool
 from app.modules.customers.mcp_tools.get_customer_tool import GetCustomerTool
+from app.modules.customers.mcp_tools.import_customers_from_file_tool import (
+    ImportCustomersFromFileTool,
+)
 from app.modules.customers.mcp_tools.search_customers_tool import SearchCustomersTool
 from app.modules.dashboard.mcp_tools.get_dashboard_summary_tool import GetDashboardSummaryTool
 from app.modules.dashboard.mcp_tools.get_revenue_timeseries_tool import (
@@ -21,6 +27,12 @@ from app.modules.dashboard.mcp_tools.get_top_selling_products_tool import (
     GetTopSellingProductsTool,
 )
 from app.modules.knowledge.mcp_tools.search_knowledge_tool import SearchKnowledgeTool
+from app.modules.products.mcp_tools.import_products_from_file_tool import (
+    ImportProductsFromFileTool,
+)
+from app.modules.suppliers.mcp_tools.import_suppliers_from_file_tool import (
+    ImportSuppliersFromFileTool,
+)
 
 ALL_TOOLS: list[AITool] = [
     CreateCustomerTool(),
@@ -31,6 +43,10 @@ ALL_TOOLS: list[AITool] = [
     GetRevenueTimeseriesTool(),
     GetTopSellingProductsTool(),
     GetSubscriptionStatusTool(),
+    ImportProductsFromFileTool(),
+    ImportCustomersFromFileTool(),
+    ImportSuppliersFromFileTool(),
+    ImportCategoriesFromFileTool(),
 ]
 
 

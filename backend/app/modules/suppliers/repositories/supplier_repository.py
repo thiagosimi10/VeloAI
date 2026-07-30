@@ -38,6 +38,16 @@ class SupplierRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_all(self) -> list[Supplier]:
+        """Todos os fornecedores ativos, sem paginação — usado pela importação em lote
+        de produtos para resolver nome → id de uma vez
+        (`products/use_cases/import_products_use_case.py`)."""
+
+        result = await self._session.execute(
+            select(Supplier).where(Supplier.deleted_at.is_(None))
+        )
+        return list(result.scalars().all())
+
     async def count_all(self) -> int:
         """Conta TODOS os registros, incluindo os excluídos (soft delete) — usado para
         gerar o próximo `code` sequencial. `code` é único na tabela inteira, então a

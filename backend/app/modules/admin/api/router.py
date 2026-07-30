@@ -143,10 +143,11 @@ async def change_password(
 async def list_tenants(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    search: str | None = Query(default=None),
     _current_admin: CurrentPlatformAdmin = Depends(get_current_platform_admin),
 ) -> SuccessResponse[list[TenantOverviewItem]]:
     use_case = ListTenantsUseCase()
-    result = await use_case.execute(page=page, page_size=page_size)
+    result = await use_case.execute(page=page, page_size=page_size, search=search)
 
     return SuccessResponse(
         message="Tenants obtidos com sucesso.", data=result.items, meta=result.meta

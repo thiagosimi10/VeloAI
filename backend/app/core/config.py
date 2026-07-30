@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     login_rate_limit_max_attempts: int = 5
     login_rate_limit_window_seconds: int = 900
 
+    # Rate limit de cadastro self-service, por IP — provisionar um tenant é caro
+    # (cria banco + roda migrations), então o limite é mais apertado que o de login.
+    signup_rate_limit_max_attempts: int = 5
+    signup_rate_limit_window_seconds: int = 3600
+
     # MinIO (Storage — Fase 12, anexos genéricos).
     minio_endpoint: str = "minio:9000"
     minio_access_key: str = "veloai_minio"
@@ -64,6 +69,18 @@ class Settings(BaseSettings):
 
     # Qdrant (RAG — Fase 15): uma Collection por tenant, conforme 04-MULTI-TENANCY.md.
     qdrant_url: str = "http://qdrant:6333"
+
+    # Frontend público — usado para montar as URLs de callback do Checkout Asaas
+    # (o navegador do cliente precisa alcançar essa URL, por isso nunca o hostname
+    # interno da rede Docker, diferente de `provisioning_url`/`ai_gateway_url`).
+    frontend_base_url: str = "http://localhost:5173"
+
+    # Gateway de pagamento (31-BILLING.md, "Gateway de Pagamento: Inicialmente Asaas").
+    asaas_api_key: str = ""
+    asaas_base_url: str = "https://api-sandbox.asaas.com/v3"
+    # Token que a Asaas devolve no header `asaas-access-token` de cada chamada de
+    # webhook — configurado como `authToken` ao criar o Webhook no painel Asaas.
+    asaas_webhook_token: str = "change-me-in-production"
 
     @property
     def cors_origins_list(self) -> list[str]:

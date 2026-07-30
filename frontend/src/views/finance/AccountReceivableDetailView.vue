@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -11,6 +13,8 @@ const store = useAccountsReceivableStore()
 const customersStore = useCustomersStore()
 const route = useRoute()
 const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
 
 const receivableId = computed(() => route.params.id as string)
 const receivable = ref<AccountReceivable | null>(null)
@@ -48,17 +52,24 @@ async function handleReceive(): Promise<void> {
   const result = await store.receiveReceivable(receivableId.value)
   if (result) {
     receivable.value = result
+    toast.add({ severity: 'success', summary: 'Conta marcada como recebida', life: 3000 })
   }
 }
 
-async function handleCancel(): Promise<void> {
-  if (!window.confirm('Cancelar esta Conta a Receber?')) {
-    return
-  }
-  const result = await store.cancelReceivable(receivableId.value)
-  if (result) {
-    receivable.value = result
-  }
+function handleCancel(): void {
+  confirm.require({
+    header: 'Cancelar conta a receber',
+    message: 'Cancelar esta Conta a Receber? Esta ação não pode ser desfeita.',
+    acceptProps: { label: 'Cancelar Conta', severity: 'danger' },
+    rejectProps: { label: 'Voltar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const result = await store.cancelReceivable(receivableId.value)
+      if (result) {
+        receivable.value = result
+        toast.add({ severity: 'success', summary: 'Conta a receber cancelada', life: 3000 })
+      }
+    },
+  })
 }
 </script>
 

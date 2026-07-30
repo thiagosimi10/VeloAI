@@ -30,6 +30,16 @@ class CategoryRepository:
         )
         return result.scalar_one_or_none()
 
+    async def list_all(self) -> list[Category]:
+        """Todas as categorias ativas, sem paginação — usado pela importação em lote de
+        produtos para resolver nome → id de uma vez (`import_products_use_case.py`),
+        em vez de uma query por linha da planilha."""
+
+        result = await self._session.execute(
+            select(Category).where(Category.deleted_at.is_(None))
+        )
+        return list(result.scalars().all())
+
     async def list(self, filters: CategoryFilterParams) -> tuple[list[Category], int]:
         conditions = [Category.deleted_at.is_(None)]
         if filters.search:

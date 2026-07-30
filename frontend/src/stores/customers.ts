@@ -2,6 +2,7 @@ import { isAxiosError } from 'axios'
 import { defineStore } from 'pinia'
 
 import { http } from '@/services/http'
+import { type ImportResult, type RawImportResult, mapImportResult } from '@/types/import'
 
 export type CustomerType = 'PF' | 'PJ'
 
@@ -238,6 +239,22 @@ export const useCustomersStore = defineStore('customers', {
       } catch (error) {
         this.error = extractErrorMessage(error)
         return false
+      }
+    },
+
+    async importCustomers(file: File): Promise<ImportResult | null> {
+      this.error = null
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await http.post<{ data: RawImportResult }>(
+          '/api/v1/customers/import',
+          formData,
+        )
+        return mapImportResult(response.data.data)
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return null
       }
     },
   },

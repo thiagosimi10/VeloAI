@@ -72,6 +72,17 @@ class TenantUserRepository:
         user.force_password_change = False
         await self._session.flush()
 
+    async def update_profile(
+        self, user: TenantUser, *, first_name: str, last_name: str | None
+    ) -> None:
+        user.first_name = first_name
+        user.last_name = last_name
+        await self._session.flush()
+
+    async def update_avatar(self, user: TenantUser, avatar_key: str | None) -> None:
+        user.avatar_key = avatar_key
+        await self._session.flush()
+
     async def touch_last_login(self, user: TenantUser) -> None:
         user.last_login_at = datetime.now(UTC)
         await self._session.flush()

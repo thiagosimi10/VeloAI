@@ -35,3 +35,7 @@ class Subscription(MasterBase, UUIDPrimaryKeyMixin, TimestampMixin):
     current_period_ends_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Preenchidos só após o primeiro pagamento confirmado via Checkout Asaas — ver
+    # 31-BILLING.md e app/modules/billing/use_cases/create_checkout_use_case.py.
+    billing_cycle: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    asaas_checkout_id: Mapped[str | None] = mapped_column(String(60), nullable=True)

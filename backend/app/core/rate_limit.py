@@ -48,3 +48,33 @@ class LoginRateLimiter:
 
 def get_login_rate_limiter() -> LoginRateLimiter:
     return LoginRateLimiter(get_redis_client())
+
+
+class SignupRateLimiter:
+    """Contador de tentativas de cadastro self-service por chave (ex.: IP). Diferente do
+    `LoginRateLimiter`, conta toda tentativa (não só falhas) — o recurso caro aqui é o
+    provisionamento do tenant em si, não uma senha errada."""
+
+    def __init__(self, redis_client: Redis) -> None:
+        self._redis = redis_client
+        self._settings = get_settings()
+
+    async def is_blocked(self, key: str) -> bool:
+        attempts = await self._redis.get(self._redis_key(key))
+        if attempts is None:
+            return False
+        return int(attempts) >= self._settings.signup_rate_limit_max_attempts
+
+    async def register_attempt(self, key: str) -> None:
+        redis_key = self._redis_key(key)
+        attempts = await self._redis.incr(redis_key)
+        if attempts == 1:
+            await self._redis.expire(redis_key, self._settings.signup_rate_limit_window_seconds)
+
+    @staticmethod
+    def _redis_key(key: str) -> str:
+        return f"signup_rate_limit:{key}"
+
+
+def get_signup_rate_limiter() -> SignupRateLimiter:
+    return SignupRateLimiter(get_redis_client())

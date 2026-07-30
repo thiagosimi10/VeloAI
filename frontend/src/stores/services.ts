@@ -22,6 +22,7 @@ export interface ServiceFormPayload {
   description?: string | null
   estimatedTime?: number | null
   price: number
+  active: boolean
 }
 
 interface RawService {
@@ -76,6 +77,7 @@ function toRawPayload(payload: ServiceFormPayload): Record<string, unknown> {
     description: payload.description || null,
     estimated_time: payload.estimatedTime,
     price: payload.price,
+    active: payload.active,
   }
 }
 

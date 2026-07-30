@@ -25,6 +25,7 @@ from app.modules.attachments.api.router import router as attachments_router
 from app.modules.auth.api.router import router as auth_router
 from app.modules.billing.api.router import router as billing_router
 from app.modules.categories.api.router import router as categories_router
+from app.modules.company.api.router import router as company_router
 from app.modules.customers.api.router import router as customers_router
 from app.modules.dashboard.api.router import router as dashboard_router
 from app.modules.finance.api.router import router as finance_router
@@ -45,6 +46,7 @@ api_v1_router.include_router(admin_router)
 api_v1_router.include_router(customers_router, dependencies=_subscription_gate)
 api_v1_router.include_router(suppliers_router, dependencies=_subscription_gate)
 api_v1_router.include_router(categories_router, dependencies=_subscription_gate)
+api_v1_router.include_router(company_router, dependencies=_subscription_gate)
 api_v1_router.include_router(products_router, dependencies=_subscription_gate)
 api_v1_router.include_router(services_router, dependencies=_subscription_gate)
 api_v1_router.include_router(users_router, dependencies=_subscription_gate)

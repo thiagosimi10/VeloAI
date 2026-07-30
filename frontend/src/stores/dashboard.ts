@@ -8,6 +8,7 @@ export interface DashboardSummary {
   totalProducts: number
   totalServices: number
   ordersByStatus: Record<string, number>
+  salesByStatus: Record<string, number>
   revenueThisMonth: number
   revenueLastMonth: number
   revenueChangePercentage: number | null
@@ -31,11 +32,28 @@ export interface TopProductItem {
   quantitySold: number
 }
 
+export interface NewCustomersTimeSeriesPoint {
+  period: string
+  count: number
+}
+
+export interface CashFlowTimeSeriesPoint {
+  period: string
+  cashIn: number
+  cashOut: number
+}
+
+export interface CategoryProductCount {
+  categoryName: string
+  productCount: number
+}
+
 interface RawDashboardSummary {
   total_customers: number
   total_products: number
   total_services: number
   orders_by_status: Record<string, number>
+  sales_by_status: Record<string, number>
   revenue_this_month: string
   revenue_last_month: string
   revenue_change_percentage: string | null
@@ -59,9 +77,29 @@ interface RawTopProductItem {
   quantity_sold: number
 }
 
+interface RawNewCustomersTimeSeriesPoint {
+  period: string
+  count: number
+}
+
+interface RawCashFlowTimeSeriesPoint {
+  period: string
+  cash_in: string
+  cash_out: string
+}
+
+interface RawCategoryProductCount {
+  category_name: string
+  product_count: number
+}
+
 interface DashboardState {
   summary: DashboardSummary | null
   revenueTimeseries: RevenueTimeSeriesPoint[]
+  dailyRevenueTimeseries: RevenueTimeSeriesPoint[]
+  newCustomersTimeseries: NewCustomersTimeSeriesPoint[]
+  cashFlowTimeseries: CashFlowTimeSeriesPoint[]
+  productsByCategory: CategoryProductCount[]
   topProducts: TopProductItem[]
   isLoading: boolean
   error: string | null
@@ -73,6 +111,7 @@ function mapSummary(raw: RawDashboardSummary): DashboardSummary {
     totalProducts: raw.total_products,
     totalServices: raw.total_services,
     ordersByStatus: raw.orders_by_status,
+    salesByStatus: raw.sales_by_status,
     revenueThisMonth: Number(raw.revenue_this_month),
     revenueLastMonth: Number(raw.revenue_last_month),
     revenueChangePercentage:
@@ -101,6 +140,10 @@ export const useDashboardStore = defineStore('dashboard', {
   state: (): DashboardState => ({
     summary: null,
     revenueTimeseries: [],
+    dailyRevenueTimeseries: [],
+    newCustomersTimeseries: [],
+    cashFlowTimeseries: [],
+    productsByCategory: [],
     topProducts: [],
     isLoading: false,
     error: null,
@@ -128,6 +171,63 @@ export const useDashboardStore = defineStore('dashboard', {
         this.revenueTimeseries = response.data.data.map((point) => ({
           period: point.period,
           revenue: Number(point.revenue),
+        }))
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+      }
+    },
+
+    async fetchDailyRevenueTimeseries(): Promise<void> {
+      try {
+        const response = await http.get<{ data: RawRevenueTimeSeriesPoint[] }>(
+          '/api/v1/dashboard/revenue-timeseries-daily',
+        )
+        this.dailyRevenueTimeseries = response.data.data.map((point) => ({
+          period: point.period,
+          revenue: Number(point.revenue),
+        }))
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+      }
+    },
+
+    async fetchNewCustomersTimeseries(): Promise<void> {
+      try {
+        const response = await http.get<{ data: RawNewCustomersTimeSeriesPoint[] }>(
+          '/api/v1/dashboard/new-customers-timeseries',
+        )
+        this.newCustomersTimeseries = response.data.data.map((point) => ({
+          period: point.period,
+          count: point.count,
+        }))
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+      }
+    },
+
+    async fetchCashFlowTimeseries(): Promise<void> {
+      try {
+        const response = await http.get<{ data: RawCashFlowTimeSeriesPoint[] }>(
+          '/api/v1/dashboard/cash-flow-timeseries',
+        )
+        this.cashFlowTimeseries = response.data.data.map((point) => ({
+          period: point.period,
+          cashIn: Number(point.cash_in),
+          cashOut: Number(point.cash_out),
+        }))
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+      }
+    },
+
+    async fetchProductsByCategory(): Promise<void> {
+      try {
+        const response = await http.get<{ data: RawCategoryProductCount[] }>(
+          '/api/v1/dashboard/products-by-category',
+        )
+        this.productsByCategory = response.data.data.map((item) => ({
+          categoryName: item.category_name,
+          productCount: item.product_count,
         }))
       } catch (error) {
         this.error = extractErrorMessage(error)

@@ -28,7 +28,7 @@ class TenantAdminSeed:
     company_id: uuid.UUID
     admin_user_id: uuid.UUID
     admin_email: str
-    temporary_password: str
+    temporary_password: str | None
 
 
 class TenantSeedService:
@@ -45,13 +45,17 @@ class TenantSeedService:
         document: str,
         admin_name: str,
         admin_email: str,
+        password: str | None = None,
     ) -> TenantAdminSeed:
         settings = get_settings()
         engine = create_async_engine(
             settings.tenant_database_url(database_name), pool_pre_ping=True
         )
         session_factory = async_sessionmaker(bind=engine, expire_on_commit=False)
-        temporary_password = secrets.token_urlsafe(15)
+        # Cadastro self-service já chega com a senha escolhida pela própria pessoa —
+        # nesse caso ela sai logada direto, sem a etapa de troca obrigatória.
+        temporary_password = password or secrets.token_urlsafe(15)
+        force_password_change = password is None
 
         try:
             async with session_factory() as session, session.begin():
@@ -79,7 +83,7 @@ class TenantSeedService:
                     last_name=last_name or None,
                     email=admin_email,
                     password_hash=hash_password(temporary_password),
-                    force_password_change=True,
+                    force_password_change=force_password_change,
                 )
                 session.add(admin_user)
                 await session.flush()
@@ -88,7 +92,7 @@ class TenantSeedService:
                     company_id=company.id,
                     admin_user_id=admin_user.id,
                     admin_email=admin_email,
-                    temporary_password=temporary_password,
+                    temporary_password=None if password else temporary_password,
                 )
         finally:
             await engine.dispose()

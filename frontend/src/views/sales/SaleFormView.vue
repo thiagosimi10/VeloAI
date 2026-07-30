@@ -2,6 +2,7 @@
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -11,6 +12,7 @@ import { type SaleFormPayload, useSalesStore } from '@/stores/sales'
 const store = useSalesStore()
 const customersStore = useCustomersStore()
 const router = useRouter()
+const toast = useToast()
 const isLoading = ref(false)
 
 const form = reactive<SaleFormPayload>({
@@ -40,6 +42,7 @@ async function handleSubmit(): Promise<void> {
   isLoading.value = false
 
   if (result) {
+    toast.add({ severity: 'success', summary: 'Venda criada', life: 3000 })
     await router.push({ name: 'sales-detail', params: { id: result.id } })
   }
 }

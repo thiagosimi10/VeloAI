@@ -11,12 +11,27 @@ from app.core.database import TenantConnectionManager, get_tenant_connection_man
 from app.core.dependencies import CurrentUser, require_permission
 from app.modules.dashboard.permissions import DASHBOARD_VIEW
 from app.modules.dashboard.schemas.dashboard import (
+    CashFlowTimeSeriesPoint,
+    CategoryProductCount,
     DashboardSummaryResponse,
+    NewCustomersTimeSeriesPoint,
     RevenueTimeSeriesPoint,
     TopProductItem,
 )
+from app.modules.dashboard.use_cases.get_cash_flow_timeseries_use_case import (
+    GetCashFlowTimeseriesUseCase,
+)
+from app.modules.dashboard.use_cases.get_daily_revenue_timeseries_use_case import (
+    GetDailyRevenueTimeseriesUseCase,
+)
 from app.modules.dashboard.use_cases.get_dashboard_summary_use_case import (
     GetDashboardSummaryUseCase,
+)
+from app.modules.dashboard.use_cases.get_new_customers_timeseries_use_case import (
+    GetNewCustomersTimeseriesUseCase,
+)
+from app.modules.dashboard.use_cases.get_products_by_category_use_case import (
+    GetProductsByCategoryUseCase,
 )
 from app.modules.dashboard.use_cases.get_revenue_timeseries_use_case import (
     GetRevenueTimeseriesUseCase,
@@ -48,6 +63,60 @@ async def get_revenue_timeseries(
         tenant_id=current_user.tenant_id, database_name=current_user.database_name
     )
     return SuccessResponse(message="Série histórica de receita obtida com sucesso.", data=points)
+
+
+@router.get("/revenue-timeseries-daily")
+async def get_daily_revenue_timeseries(
+    current_user: CurrentUser = Depends(require_permission(DASHBOARD_VIEW)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[list[RevenueTimeSeriesPoint]]:
+    use_case = GetDailyRevenueTimeseriesUseCase(connection_manager=connection_manager)
+    points = await use_case.execute(
+        tenant_id=current_user.tenant_id, database_name=current_user.database_name
+    )
+    return SuccessResponse(
+        message="Série diária de receita obtida com sucesso.", data=points
+    )
+
+
+@router.get("/new-customers-timeseries")
+async def get_new_customers_timeseries(
+    current_user: CurrentUser = Depends(require_permission(DASHBOARD_VIEW)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[list[NewCustomersTimeSeriesPoint]]:
+    use_case = GetNewCustomersTimeseriesUseCase(connection_manager=connection_manager)
+    points = await use_case.execute(
+        tenant_id=current_user.tenant_id, database_name=current_user.database_name
+    )
+    return SuccessResponse(
+        message="Série histórica de novos clientes obtida com sucesso.", data=points
+    )
+
+
+@router.get("/cash-flow-timeseries")
+async def get_cash_flow_timeseries(
+    current_user: CurrentUser = Depends(require_permission(DASHBOARD_VIEW)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[list[CashFlowTimeSeriesPoint]]:
+    use_case = GetCashFlowTimeseriesUseCase(connection_manager=connection_manager)
+    points = await use_case.execute(
+        tenant_id=current_user.tenant_id, database_name=current_user.database_name
+    )
+    return SuccessResponse(
+        message="Série histórica de fluxo de caixa obtida com sucesso.", data=points
+    )
+
+
+@router.get("/products-by-category")
+async def get_products_by_category(
+    current_user: CurrentUser = Depends(require_permission(DASHBOARD_VIEW)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[list[CategoryProductCount]]:
+    use_case = GetProductsByCategoryUseCase(connection_manager=connection_manager)
+    items = await use_case.execute(
+        tenant_id=current_user.tenant_id, database_name=current_user.database_name
+    )
+    return SuccessResponse(message="Produtos por categoria obtidos com sucesso.", data=items)
 
 
 @router.get("/top-products")

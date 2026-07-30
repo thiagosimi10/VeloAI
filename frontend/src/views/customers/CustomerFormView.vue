@@ -4,14 +4,17 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { type CustomerFormPayload, useCustomersStore } from '@/stores/customers'
+import { formatDocumentInput, formatPhoneInput } from '@/utils/mask'
 
 const store = useCustomersStore()
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 
 const customerId = computed(() => (typeof route.params.id === 'string' ? route.params.id : null))
 const isEditing = computed(() => customerId.value !== null)
@@ -34,6 +37,27 @@ const typeOptions = [
   { label: 'Pessoa Jurídica', value: 'PJ' },
 ]
 
+const documentDisplay = computed({
+  get: () => form.document,
+  set: (value: string) => {
+    form.document = formatDocumentInput(value)
+  },
+})
+
+const phoneDisplay = computed({
+  get: () => form.phone,
+  set: (value: string) => {
+    form.phone = formatPhoneInput(value)
+  },
+})
+
+const mobileDisplay = computed({
+  get: () => form.mobile,
+  set: (value: string) => {
+    form.mobile = formatPhoneInput(value)
+  },
+})
+
 onMounted(async () => {
   if (customerId.value) {
     isLoading.value = true
@@ -41,10 +65,10 @@ onMounted(async () => {
     if (customer) {
       form.type = customer.type
       form.name = customer.name
-      form.document = customer.document
+      form.document = formatDocumentInput(customer.document)
       form.email = customer.email ?? ''
-      form.phone = customer.phone ?? ''
-      form.mobile = customer.mobile ?? ''
+      form.phone = formatPhoneInput(customer.phone ?? '')
+      form.mobile = formatPhoneInput(customer.mobile ?? '')
       form.city = customer.city ?? ''
       form.state = customer.state ?? ''
       form.notes = customer.notes ?? ''
@@ -62,6 +86,11 @@ async function handleSubmit(): Promise<void> {
   isLoading.value = false
 
   if (result) {
+    toast.add({
+      severity: 'success',
+      summary: isEditing.value ? 'Cliente atualizado' : 'Cliente criado',
+      life: 3000,
+    })
     await router.push({ name: 'customers' })
   }
 }
@@ -99,9 +128,10 @@ async function handleSubmit(): Promise<void> {
           </label>
           <InputText
             id="customer-document"
-            v-model="form.document"
+            v-model="documentDisplay"
             class="w-full"
             :disabled="isEditing"
+            placeholder="000.000.000-00"
             required
           />
         </div>
@@ -125,17 +155,38 @@ async function handleSubmit(): Promise<void> {
           <label for="customer-phone" class="text-sm font-medium text-text-primary dark:text-white">
             Telefone
           </label>
-          <InputText id="customer-phone" v-model="form.phone" class="w-full" />
+          <InputText
+            id="customer-phone"
+            v-model="phoneDisplay"
+            type="tel"
+            placeholder="(00) 0000-0000"
+            class="w-full"
+          />
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label for="customer-mobile" class="text-sm font-medium text-text-primary dark:text-white">
+            Celular
+          </label>
+          <InputText
+            id="customer-mobile"
+            v-model="mobileDisplay"
+            type="tel"
+            placeholder="(00) 00000-0000"
+            class="w-full"
+          />
+        </div>
         <div class="space-y-1">
           <label for="customer-city" class="text-sm font-medium text-text-primary dark:text-white">
             Cidade
           </label>
           <InputText id="customer-city" v-model="form.city" class="w-full" />
         </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
         <div class="space-y-1">
           <label for="customer-state" class="text-sm font-medium text-text-primary dark:text-white">
             Estado

@@ -1,14 +1,19 @@
 <script setup lang="ts">
+import { Wallet } from 'lucide-vue-next'
 import Button from 'primevue/button'
-import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive } from 'vue'
 
+import EmptyState from '@/components/data/EmptyState.vue'
+import TableSkeleton from '@/components/data/TableSkeleton.vue'
+import MoneyInput from '@/components/form/MoneyInput.vue'
 import { type CashFlowEntryType, useCashFlowStore } from '@/stores/cashFlow'
 
 const store = useCashFlowStore()
+const toast = useToast()
 const typeFilter = computed({
   get: () => store.type,
   set: (value: CashFlowEntryType | null) => {
@@ -49,6 +54,7 @@ async function handleCreateEntry(): Promise<void> {
     entryForm.category = ''
     entryForm.description = ''
     entryForm.amount = 0
+    toast.add({ severity: 'success', summary: 'Lançamento registrado', life: 3000 })
     await store.fetchEntries()
   }
 }
@@ -90,7 +96,7 @@ function goToNextPage(): void {
       />
       <InputText v-model="entryForm.category" placeholder="Categoria" class="w-full" />
       <InputText v-model="entryForm.description" placeholder="Descrição" class="w-full" />
-      <InputNumber v-model="entryForm.amount" mode="currency" currency="BRL" locale="pt-BR" class="w-full" />
+      <MoneyInput v-model="entryForm.amount" class="w-full" />
       <Button type="submit" label="Lançar" data-testid="cash-flow-entry-submit" />
     </form>
 
@@ -118,9 +124,10 @@ function goToNextPage(): void {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="store.items.length === 0">
-            <td colspan="5" class="px-4 py-6 text-center text-text-secondary">
-              {{ store.isLoading ? 'Carregando...' : 'Nenhum lançamento encontrado.' }}
+          <TableSkeleton v-if="store.isLoading && store.items.length === 0" :columns="5" />
+          <tr v-else-if="store.items.length === 0">
+            <td colspan="5">
+              <EmptyState :icon="Wallet" message="Nenhum lançamento encontrado." />
             </td>
           </tr>
           <tr

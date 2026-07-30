@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -11,6 +13,8 @@ const store = useAccountsPayableStore()
 const suppliersStore = useSuppliersStore()
 const route = useRoute()
 const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
 
 const payableId = computed(() => route.params.id as string)
 const payable = ref<AccountPayable | null>(null)
@@ -48,17 +52,24 @@ async function handlePay(): Promise<void> {
   const result = await store.payPayable(payableId.value)
   if (result) {
     payable.value = result
+    toast.add({ severity: 'success', summary: 'Conta marcada como paga', life: 3000 })
   }
 }
 
-async function handleCancel(): Promise<void> {
-  if (!window.confirm('Cancelar esta Conta a Pagar?')) {
-    return
-  }
-  const result = await store.cancelPayable(payableId.value)
-  if (result) {
-    payable.value = result
-  }
+function handleCancel(): void {
+  confirm.require({
+    header: 'Cancelar conta a pagar',
+    message: 'Cancelar esta Conta a Pagar? Esta ação não pode ser desfeita.',
+    acceptProps: { label: 'Cancelar Conta', severity: 'danger' },
+    rejectProps: { label: 'Voltar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const result = await store.cancelPayable(payableId.value)
+      if (result) {
+        payable.value = result
+        toast.add({ severity: 'success', summary: 'Conta a pagar cancelada', life: 3000 })
+      }
+    },
+  })
 }
 </script>
 

@@ -135,6 +135,64 @@ async def test_provision_creates_real_database_with_admin_user(master_database: 
         await QdrantProvisioningService().delete_tenant_collection(result.tenant_id)
 
 
+async def test_provision_with_password_skips_forced_change(master_database: None) -> None:
+    """Cadastro self-service: a pessoa já escolhe a própria senha, então não deve ser
+    obrigada a trocá-la no primeiro login (diferente do fluxo admin-driven)."""
+
+    service = TenantProvisioningService()
+    payload = CreateTenantRequest(
+        legal_name="Padaria Self Service LTDA",
+        document="11122233000144",
+        admin_name="Fernanda Alves",
+        admin_email="fernanda@padariaselfservice.test",
+        password="uma-senha-forte-123",
+    )
+
+    result = await service.provision(payload)
+    try:
+        assert result.admin.temporary_password is None
+
+        settings = get_settings()
+        tenant_engine = create_async_engine(settings.tenant_database_url(result.database_name))
+        try:
+            async with tenant_engine.connect() as connection:
+                async with AsyncSession(bind=connection) as tenant_session:
+                    admin_result = await tenant_session.execute(
+                        select(TenantUser).where(
+                            TenantUser.email == "fernanda@padariaselfservice.test"
+                        )
+                    )
+                    admin_user = admin_result.scalar_one()
+                    assert admin_user.force_password_change is False
+        finally:
+            await tenant_engine.dispose()
+    finally:
+        await DatabaseAdminService().drop_database(result.database_name)
+        await QdrantProvisioningService().delete_tenant_collection(result.tenant_id)
+
+
+async def test_provision_rejects_duplicate_email(master_database: None) -> None:
+    service = TenantProvisioningService()
+    payload = CreateTenantRequest(
+        legal_name="Empresa Original LTDA",
+        document="55566677000122",
+        admin_name="Bruno Costa",
+        admin_email="bruno@original.test",
+    )
+
+    result = await service.provision(payload)
+    try:
+        duplicate_payload = payload.model_copy(update={"document": "99988877000133"})
+        try:
+            await service.provision(duplicate_payload)
+            raise AssertionError("Deveria ter levantado ConflictError para e-mail duplicado.")
+        except ConflictError as exc:
+            assert exc.code == "EMAIL_ALREADY_EXISTS"
+    finally:
+        await DatabaseAdminService().drop_database(result.database_name)
+        await QdrantProvisioningService().delete_tenant_collection(result.tenant_id)
+
+
 async def test_provision_rejects_duplicate_document(master_database: None) -> None:
     service = TenantProvisioningService()
     payload = CreateTenantRequest(

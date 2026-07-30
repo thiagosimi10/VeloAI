@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from veloai_shared.schema.master import (
     AuditLog,
@@ -72,16 +72,27 @@ class AdminRepository:
         await self._session.flush()
         return entry
 
-    async def count_tenants(self) -> int:
-        result = await self._session.execute(select(func.count()).select_from(Tenant))
+    async def count_tenants(self, *, search: str | None = None) -> int:
+        query = select(func.count()).select_from(Tenant)
+        if search:
+            pattern = f"%{search}%"
+            query = query.where(
+                or_(Tenant.legal_name.ilike(pattern), Tenant.document.ilike(pattern))
+            )
+        result = await self._session.execute(query)
         return result.scalar_one()
 
-    async def list_tenants(self, *, page: int, page_size: int) -> list[Tenant]:
+    async def list_tenants(
+        self, *, page: int, page_size: int, search: str | None = None
+    ) -> list[Tenant]:
+        query = select(Tenant).order_by(Tenant.created_at.desc())
+        if search:
+            pattern = f"%{search}%"
+            query = query.where(
+                or_(Tenant.legal_name.ilike(pattern), Tenant.document.ilike(pattern))
+            )
         result = await self._session.execute(
-            select(Tenant)
-            .order_by(Tenant.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
+            query.offset((page - 1) * page_size).limit(page_size)
         )
         return list(result.scalars().all())
 

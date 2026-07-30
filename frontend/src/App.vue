@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ConfirmDialog from 'primevue/confirmdialog'
+import Toast from 'primevue/toast'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
@@ -16,10 +18,16 @@ const layouts = {
   marketing: MarketingLayout,
 } as const
 
-const layout = computed(() => layouts[(route.meta.layout as keyof typeof layouts) ?? 'default'])
+// Fallback nunca é 'default' (o layout com sidebar/menu do app) — enquanto a
+// navegação inicial ainda não resolveu (guard de autenticação em `router/index.ts`
+// ainda checando a sessão), mostrar a casca do app seria vazar a interface interna
+// pra quem nem logou ainda.
+const layout = computed(() => layouts[(route.meta.layout as keyof typeof layouts) ?? 'auth'])
 </script>
 
 <template>
+  <Toast position="top-right" />
+  <ConfirmDialog />
   <component :is="layout">
     <router-view />
   </component>

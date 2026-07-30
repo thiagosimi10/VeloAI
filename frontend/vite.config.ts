@@ -14,6 +14,13 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // `usePolling` garante que o hot-reload funcione mesmo dentro do Docker Desktop no
+    // Windows, onde eventos nativos de sistema de arquivos às vezes não atravessam o
+    // bind mount corretamente.
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
   },
   test: {
     environment: 'jsdom',

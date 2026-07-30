@@ -3,9 +3,12 @@ import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import MoneyInput from '@/components/form/MoneyInput.vue'
 import { useCustomersStore } from '@/stores/customers'
 import { useProductsStore } from '@/stores/products'
 import { type Sale, type SaleStatus, useSalesStore } from '@/stores/sales'
@@ -15,6 +18,8 @@ const customersStore = useCustomersStore()
 const productsStore = useProductsStore()
 const route = useRoute()
 const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
 
 const saleId = computed(() => route.params.id as string)
 const sale = ref<Sale | null>(null)
@@ -97,14 +102,20 @@ async function handleAddItem(): Promise<void> {
   }
 }
 
-async function handleRemoveItem(itemId: string): Promise<void> {
-  if (!window.confirm('Remover este item da Venda?')) {
-    return
-  }
-  const success = await store.removeItem(saleId.value, itemId)
-  if (success) {
-    await loadData()
-  }
+function handleRemoveItem(itemId: string): void {
+  confirm.require({
+    header: 'Remover item',
+    message: 'Remover este item da Venda?',
+    acceptProps: { label: 'Remover', severity: 'danger' },
+    rejectProps: { label: 'Cancelar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const success = await store.removeItem(saleId.value, itemId)
+      if (success) {
+        toast.add({ severity: 'success', summary: 'Item removido', life: 3000 })
+        await loadData()
+      }
+    },
+  })
 }
 
 async function handleApplyDiscount(): Promise<void> {
@@ -114,6 +125,7 @@ async function handleApplyDiscount(): Promise<void> {
   })
   if (result) {
     sale.value = result
+    toast.add({ severity: 'success', summary: 'Desconto aplicado', life: 3000 })
   }
 }
 
@@ -122,17 +134,24 @@ async function handleComplete(): Promise<void> {
   if (result) {
     sale.value = result
     await productsStore.fetchProducts()
+    toast.add({ severity: 'success', summary: 'Venda concluída', life: 3000 })
   }
 }
 
-async function handleCancel(): Promise<void> {
-  if (!window.confirm('Cancelar esta Venda?')) {
-    return
-  }
-  const result = await store.cancelSale(saleId.value)
-  if (result) {
-    sale.value = result
-  }
+function handleCancel(): void {
+  confirm.require({
+    header: 'Cancelar venda',
+    message: 'Cancelar esta Venda? Esta ação não pode ser desfeita.',
+    acceptProps: { label: 'Cancelar Venda', severity: 'danger' },
+    rejectProps: { label: 'Voltar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const result = await store.cancelSale(saleId.value)
+      if (result) {
+        sale.value = result
+        toast.add({ severity: 'success', summary: 'Venda cancelada', life: 3000 })
+      }
+    },
+  })
 }
 </script>
 
@@ -188,7 +207,7 @@ async function handleCancel(): Promise<void> {
       >
         <div class="space-y-1">
           <label class="text-sm font-medium text-text-primary dark:text-white">Desconto</label>
-          <InputNumber v-model="discountForm.discount" mode="currency" currency="BRL" locale="pt-BR" class="w-40" />
+          <MoneyInput v-model="discountForm.discount" class="w-40" />
         </div>
         <Button type="button" label="Aplicar Desconto" severity="secondary" @click="handleApplyDiscount" />
       </div>

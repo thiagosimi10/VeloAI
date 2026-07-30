@@ -16,3 +16,19 @@ class SubscriptionResponse(BaseModel):
     trial_ends_at: datetime | None
     current_period_ends_at: datetime | None
     days_remaining: int | None
+
+
+class PlanTierResponse(BaseModel):
+    cycle: str
+    label: str
+    months: int
+    monthly_price: Decimal
+    total_price: Decimal
+
+
+class CheckoutRequest(BaseModel):
+    cycle: str
+
+
+class CheckoutResponse(BaseModel):
+    checkout_url: str

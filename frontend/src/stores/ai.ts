@@ -23,11 +23,27 @@ interface RawAskAIResponse {
   tool_used: string | null
 }
 
+export interface AttachedFile {
+  uploadId: string
+  filename: string
+  rowCount: number
+  headers: string[]
+}
+
+interface RawAiUploadResponse {
+  upload_id: string
+  filename: string
+  row_count: number
+  headers: string[]
+}
+
 interface AiState {
   isLoading: boolean
+  isUploading: boolean
   error: string | null
   lastResult: AskAIResult | null
   isChatOpen: boolean
+  attachedFile: AttachedFile | null
 }
 
 function mapAskAIResponse(raw: RawAskAIResponse): AskAIResult {
@@ -55,9 +71,11 @@ function extractErrorMessage(error: unknown): string {
 export const useAiStore = defineStore('ai', {
   state: (): AiState => ({
     isLoading: false,
+    isUploading: false,
     error: null,
     lastResult: null,
     isChatOpen: false,
+    attachedFile: null,
   }),
   actions: {
     async askAI(prompt: string): Promise<AskAIResult | null> {
@@ -65,8 +83,12 @@ export const useAiStore = defineStore('ai', {
       this.error = null
 
       try {
-        const response = await http.post<{ data: RawAskAIResponse }>('/api/v1/ai/ask', { prompt })
+        const response = await http.post<{ data: RawAskAIResponse }>('/api/v1/ai/ask', {
+          prompt,
+          upload_id: this.attachedFile?.uploadId ?? null,
+        })
         this.lastResult = mapAskAIResponse(response.data.data)
+        this.attachedFile = null
         return this.lastResult
       } catch (error) {
         this.error = extractErrorMessage(error)
@@ -74,6 +96,35 @@ export const useAiStore = defineStore('ai', {
       } finally {
         this.isLoading = false
       }
+    },
+    async uploadFile(file: File): Promise<boolean> {
+      this.isUploading = true
+      this.error = null
+
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await http.post<{ data: RawAiUploadResponse }>(
+          '/api/v1/ai/uploads',
+          formData,
+        )
+        const raw = response.data.data
+        this.attachedFile = {
+          uploadId: raw.upload_id,
+          filename: raw.filename,
+          rowCount: raw.row_count,
+          headers: raw.headers,
+        }
+        return true
+      } catch (error) {
+        this.error = extractErrorMessage(error)
+        return false
+      } finally {
+        this.isUploading = false
+      }
+    },
+    clearAttachedFile(): void {
+      this.attachedFile = null
     },
     openChat(): void {
       this.isChatOpen = true

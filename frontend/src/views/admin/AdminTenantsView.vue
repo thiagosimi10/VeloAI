@@ -10,13 +10,23 @@ import {
   Plus,
   Wallet,
 } from 'lucide-vue-next'
-import { onMounted } from 'vue'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import EmptyState from '@/components/data/EmptyState.vue'
+import TableSkeleton from '@/components/data/TableSkeleton.vue'
 import { useAdminStore } from '@/stores/admin'
 
 const store = useAdminStore()
 const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
+const searchInput = ref('')
 
 const subscriptionStatusLabels: Record<string, string> = {
   TRIAL: 'Período de Teste',
@@ -97,13 +107,48 @@ async function handleImpersonate(tenantId: string): Promise<void> {
   }
 }
 
-async function handleCancel(tenantId: string, legalName: string): Promise<void> {
-  if (!window.confirm(`Cancelar a empresa "${legalName}"? O banco de dados dela é mantido.`)) {
-    return
+function handleCancel(tenantId: string, legalName: string): void {
+  confirm.require({
+    header: 'Cancelar empresa',
+    message: `Cancelar a empresa "${legalName}"? O banco de dados dela é mantido.`,
+    acceptProps: { label: 'Cancelar Empresa', severity: 'danger' },
+    rejectProps: { label: 'Voltar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const success = await store.cancelTenant(tenantId)
+      if (success) {
+        toast.add({ severity: 'success', summary: 'Empresa cancelada', life: 3000 })
+        await store.fetchTenants()
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: 'Não foi possível cancelar',
+          detail: store.error ?? undefined,
+          life: 4000,
+        })
+      }
+    },
+  })
+}
+
+function handleSearchSubmit(): void {
+  store.setTenantsSearch(searchInput.value)
+  void store.fetchTenants()
+}
+
+const hasPreviousPage = computed(() => store.tenantsMeta.page > 1)
+const hasNextPage = computed(() => store.tenantsMeta.page < store.tenantsMeta.pages)
+
+function goToPreviousPage(): void {
+  if (hasPreviousPage.value) {
+    store.setTenantsPage(store.tenantsMeta.page - 1)
+    void store.fetchTenants()
   }
-  const success = await store.cancelTenant(tenantId)
-  if (success) {
-    await store.fetchTenants()
+}
+
+function goToNextPage(): void {
+  if (hasNextPage.value) {
+    store.setTenantsPage(store.tenantsMeta.page + 1)
+    void store.fetchTenants()
   }
 }
 
@@ -132,9 +177,7 @@ onMounted(async () => {
       </button>
     </div>
 
-    <p v-if="store.error" class="rounded-md bg-danger/10 px-4 py-2 text-sm text-danger">
-      {{ store.error }}
-    </p>
+    <Message v-if="store.error" severity="error" :closable="false">{{ store.error }}</Message>
 
     <div v-if="store.summary" class="grid grid-cols-2 gap-4 sm:grid-cols-4">
       <div
@@ -191,6 +234,15 @@ onMounted(async () => {
       </div>
     </div>
 
+    <form class="flex gap-2" @submit.prevent="handleSearchSubmit">
+      <InputText
+        v-model="searchInput"
+        placeholder="Buscar por razão social ou documento..."
+        class="w-full max-w-sm"
+      />
+      <Button type="submit" label="Buscar" severity="secondary" />
+    </form>
+
     <div
       class="overflow-hidden rounded-lg border border-black/5 bg-surface-light shadow-sm dark:border-white/10 dark:bg-surface-dark"
     >
@@ -206,44 +258,23 @@ onMounted(async () => {
           </tr>
         </thead>
         <tbody>
-          <template v-if="store.isLoading && store.tenants.length === 0">
-            <tr v-for="n in 3" :key="n" class="border-b border-black/5 last:border-0 dark:border-white/5">
-              <td class="px-5 py-4">
-                <div class="h-3.5 w-32 animate-pulse rounded bg-black/5 dark:bg-white/10" />
-              </td>
-              <td class="px-5 py-4">
-                <div class="h-3.5 w-24 animate-pulse rounded bg-black/5 dark:bg-white/10" />
-              </td>
-              <td class="px-5 py-4">
-                <div class="h-5 w-16 animate-pulse rounded-full bg-black/5 dark:bg-white/10" />
-              </td>
-              <td class="px-5 py-4">
-                <div class="h-3.5 w-20 animate-pulse rounded bg-black/5 dark:bg-white/10" />
-              </td>
-              <td class="px-5 py-4">
-                <div class="h-5 w-20 animate-pulse rounded-full bg-black/5 dark:bg-white/10" />
-              </td>
-              <td class="px-5 py-4">
-                <div class="h-3.5 w-16 animate-pulse rounded bg-black/5 dark:bg-white/10" />
-              </td>
-            </tr>
-          </template>
+          <TableSkeleton
+            v-if="store.isLoading && store.tenants.length === 0"
+            :columns="6"
+            cell-class="px-5 py-4"
+          />
           <tr v-else-if="store.tenants.length === 0">
-            <td colspan="6" class="px-5 py-16 text-center">
-              <div class="flex flex-col items-center gap-3 text-text-secondary">
-                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-black/5 dark:bg-white/10">
-                  <Building2 :size="22" class="opacity-50" />
-                </div>
-                <p>Nenhuma empresa cadastrada ainda.</p>
-                <button
-                  type="button"
-                  class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-primary-hover"
-                  @click="goToNewTenant"
-                >
-                  <Plus :size="14" />
-                  Nova Empresa
-                </button>
-              </div>
+            <td colspan="6">
+              <EmptyState
+                :icon="Building2"
+                :message="
+                  store.tenantsSearch
+                    ? 'Nenhuma empresa encontrada para essa busca.'
+                    : 'Nenhuma empresa cadastrada ainda.'
+                "
+                action-label="Nova Empresa"
+                @action="goToNewTenant"
+              />
             </td>
           </tr>
           <tr
@@ -334,6 +365,32 @@ onMounted(async () => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div
+      v-if="store.tenants.length > 0"
+      class="flex items-center justify-between text-sm text-text-secondary"
+    >
+      <span>{{ store.tenantsMeta.total }} empresa(s)</span>
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="rounded-md px-2 py-1 disabled:opacity-40"
+          :disabled="!hasPreviousPage"
+          @click="goToPreviousPage"
+        >
+          Anterior
+        </button>
+        <span>Página {{ store.tenantsMeta.page }} de {{ Math.max(store.tenantsMeta.pages, 1) }}</span>
+        <button
+          type="button"
+          class="rounded-md px-2 py-1 disabled:opacity-40"
+          :disabled="!hasNextPage"
+          @click="goToNextPage"
+        >
+          Próxima
+        </button>
+      </div>
     </div>
   </div>
 </template>

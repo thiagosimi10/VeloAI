@@ -3,6 +3,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -11,6 +12,7 @@ import { type CategoryFormPayload, useCategoriesStore } from '@/stores/categorie
 const store = useCategoriesStore()
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 
 const categoryId = computed(() => (typeof route.params.id === 'string' ? route.params.id : null))
 const isEditing = computed(() => categoryId.value !== null)
@@ -42,6 +44,11 @@ async function handleSubmit(): Promise<void> {
   isLoading.value = false
 
   if (result) {
+    toast.add({
+      severity: 'success',
+      summary: isEditing.value ? 'Categoria atualizada' : 'Categoria criada',
+      life: 3000,
+    })
     await router.push({ name: 'categories' })
   }
 }

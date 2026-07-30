@@ -13,13 +13,14 @@ function readStoredTheme(): ThemeMode {
   if (stored === 'light' || stored === 'dark') {
     return stored
   }
-  const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
-  return prefersDark ? 'dark' : 'light'
+  // Sempre inicia escuro por padrão — a pessoa troca pra claro manualmente pelo botão
+  // no cabeçalho se preferir; nunca decide isso pela preferência do sistema operacional.
+  return 'dark'
 }
 
 export const useThemeStore = defineStore('theme', {
   state: () => ({
-    mode: 'light' as ThemeMode,
+    mode: 'dark' as ThemeMode,
   }),
   actions: {
     initialize(): void {

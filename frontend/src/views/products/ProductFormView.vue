@@ -5,9 +5,11 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import MoneyInput from '@/components/form/MoneyInput.vue'
 import { useCategoriesStore } from '@/stores/categories'
 import { type ProductFormPayload, useProductsStore } from '@/stores/products'
 import { useSuppliersStore } from '@/stores/suppliers'
@@ -17,6 +19,7 @@ const categoriesStore = useCategoriesStore()
 const suppliersStore = useSuppliersStore()
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 
 const productId = computed(() => (typeof route.params.id === 'string' ? route.params.id : null))
 const isEditing = computed(() => productId.value !== null)
@@ -84,6 +87,11 @@ async function handleSubmit(): Promise<void> {
   isLoading.value = false
 
   if (result) {
+    toast.add({
+      severity: 'success',
+      summary: isEditing.value ? 'Produto atualizado' : 'Produto criado',
+      life: 3000,
+    })
     await router.push({ name: 'products' })
   }
 }
@@ -174,14 +182,7 @@ async function handleSubmit(): Promise<void> {
           >
             Preço de Custo
           </label>
-          <InputNumber
-            v-model="form.costPrice"
-            input-id="product-cost-price"
-            mode="currency"
-            currency="BRL"
-            locale="pt-BR"
-            class="w-full"
-          />
+          <MoneyInput id="product-cost-price" v-model="form.costPrice" class="w-full" />
         </div>
         <div class="space-y-1">
           <label
@@ -190,14 +191,7 @@ async function handleSubmit(): Promise<void> {
           >
             Preço de Venda
           </label>
-          <InputNumber
-            v-model="form.salePrice"
-            input-id="product-sale-price"
-            mode="currency"
-            currency="BRL"
-            locale="pt-BR"
-            class="w-full"
-          />
+          <MoneyInput id="product-sale-price" v-model="form.salePrice" class="w-full" />
         </div>
       </div>
 

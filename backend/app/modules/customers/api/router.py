@@ -6,11 +6,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
+from veloai_shared.exceptions import ValidationError
 from veloai_shared.responses import SuccessResponse
 
 from app.core.database import TenantConnectionManager, get_tenant_connection_manager
 from app.core.dependencies import CurrentUser, require_permission
+from app.core.import_result import ImportResultResponse, to_import_result_response
 from app.modules.customers.permissions import (
     CUSTOMERS_CREATE,
     CUSTOMERS_DELETE,
@@ -26,10 +28,13 @@ from app.modules.customers.schemas.customer import (
 from app.modules.customers.use_cases.create_customer_use_case import CreateCustomerUseCase
 from app.modules.customers.use_cases.delete_customer_use_case import DeleteCustomerUseCase
 from app.modules.customers.use_cases.get_customer_use_case import GetCustomerUseCase
+from app.modules.customers.use_cases.import_customers_use_case import ImportCustomersUseCase
 from app.modules.customers.use_cases.list_customers_use_case import ListCustomersUseCase
 from app.modules.customers.use_cases.update_customer_use_case import UpdateCustomerUseCase
 
 router = APIRouter(prefix="/customers", tags=["customers"])
+
+_MAX_IMPORT_FILE_SIZE_BYTES = 5 * 1024 * 1024
 
 
 @router.get("")
@@ -78,6 +83,32 @@ async def create_customer(
         payload=payload,
     )
     return SuccessResponse(message="Cliente criado com sucesso.", data=customer)
+
+
+@router.post("/import")
+async def import_customers(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(require_permission(CUSTOMERS_CREATE)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[ImportResultResponse]:
+    data = await file.read()
+    if len(data) > _MAX_IMPORT_FILE_SIZE_BYTES:
+        raise ValidationError(
+            "Arquivo muito grande. O limite é 5MB.", code="IMPORT_FILE_TOO_LARGE"
+        )
+
+    use_case = ImportCustomersUseCase(connection_manager=connection_manager)
+    result = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        actor_user_id=current_user.user_id,
+        filename=file.filename or "arquivo",
+        data=data,
+    )
+    return SuccessResponse(
+        message=f"{result.created} de {result.total_rows} cliente(s) importado(s).",
+        data=to_import_result_response(result),
+    )
 
 
 @router.patch("/{customer_id}")

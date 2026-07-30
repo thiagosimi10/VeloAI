@@ -1,16 +1,47 @@
 <script setup lang="ts">
-import { FlexRender, createColumnHelper, getCoreRowModel, useVueTable } from '@tanstack/vue-table'
-import { Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import {
+  FlexRender,
+  createColumnHelper,
+  getCoreRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useVueTable,
+} from '@tanstack/vue-table'
+import { Pencil, Plus, Trash2, Truck, Upload } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import EmptyState from '@/components/data/EmptyState.vue'
+import ImportDialog from '@/components/data/ImportDialog.vue'
+import SortableHeader from '@/components/data/SortableHeader.vue'
+import TableSkeleton from '@/components/data/TableSkeleton.vue'
 import { type Supplier, useSuppliersStore } from '@/stores/suppliers'
 
 const store = useSuppliersStore()
 const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
 const searchInput = ref('')
+const sorting = ref<SortingState>([])
+const isImportDialogOpen = ref(false)
+
+const IMPORT_TEMPLATE =
+  'tipo,nome,documento,email,telefone,celular,cidade,estado\n' +
+  'PJ,Fornecedor Exemplo,12.345.678/0001-90,contato@fornecedor.com,(11) 3333-4444,(11) 98888-7777,São Paulo,SP\n'
+
+function handleImportFile(file: File) {
+  return store.importSuppliers(file)
+}
+
+function handleImported(): void {
+  toast.add({ severity: 'success', summary: 'Importação concluída', life: 3000 })
+  void store.fetchSuppliers()
+}
 
 const columnHelper = createColumnHelper<Supplier>()
 
@@ -19,7 +50,7 @@ const columns = [
   columnHelper.accessor('name', { header: 'Nome' }),
   columnHelper.accessor('document', { header: 'Documento' }),
   columnHelper.accessor((row) => row.email ?? '—', { id: 'email', header: 'E-mail' }),
-  columnHelper.display({ id: 'actions', header: 'Ações' }),
+  columnHelper.display({ id: 'actions', header: 'Ações', enableSorting: false }),
 ]
 
 const table = useVueTable({
@@ -27,7 +58,16 @@ const table = useVueTable({
     return store.items
   },
   columns,
+  state: {
+    get sorting() {
+      return sorting.value
+    },
+  },
+  onSortingChange: (updater) => {
+    sorting.value = typeof updater === 'function' ? updater(sorting.value) : updater
+  },
   getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
 })
 
 onMounted(() => {
@@ -47,14 +87,27 @@ function goToEditSupplier(id: string): void {
   router.push({ name: 'suppliers-edit', params: { id } })
 }
 
-async function handleDelete(id: string, name: string): Promise<void> {
-  if (!window.confirm(`Excluir o fornecedor "${name}"?`)) {
-    return
-  }
-  const success = await store.deleteSupplier(id)
-  if (success) {
-    await store.fetchSuppliers()
-  }
+function handleDelete(id: string, name: string): void {
+  confirm.require({
+    header: 'Excluir fornecedor',
+    message: `Excluir o fornecedor "${name}"? Esta ação não pode ser desfeita.`,
+    acceptProps: { label: 'Excluir', severity: 'danger' },
+    rejectProps: { label: 'Cancelar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const success = await store.deleteSupplier(id)
+      if (success) {
+        toast.add({ severity: 'success', summary: 'Fornecedor excluído', life: 3000 })
+        await store.fetchSuppliers()
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: 'Não foi possível excluir',
+          detail: store.error ?? undefined,
+          life: 4000,
+        })
+      }
+    },
+  })
 }
 
 const hasPreviousPage = computed(() => store.meta.page > 1)
@@ -79,16 +132,38 @@ function goToNextPage(): void {
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <h1 class="text-xl font-semibold text-text-primary dark:text-white">Fornecedores</h1>
-      <button
-        type="button"
-        data-testid="new-supplier-button"
-        class="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover"
-        @click="goToNewSupplier"
-      >
-        <Plus :size="16" />
-        Novo Fornecedor
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          data-testid="import-suppliers-button"
+          class="flex items-center gap-2 rounded-md border border-black/10 px-3 py-1.5 text-sm font-medium text-text-primary hover:bg-black/5 dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+          @click="isImportDialogOpen = true"
+        >
+          <Upload :size="16" />
+          Importar
+        </button>
+        <button
+          type="button"
+          data-testid="new-supplier-button"
+          class="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover"
+          @click="goToNewSupplier"
+        >
+          <Plus :size="16" />
+          Novo Fornecedor
+        </button>
+      </div>
     </div>
+
+    <ImportDialog
+      v-model:visible="isImportDialogOpen"
+      title="Importar Fornecedores"
+      result-noun="fornecedor(es)"
+      template-filename="modelo-importacao-fornecedores.csv"
+      :template-content="IMPORT_TEMPLATE"
+      :import-fn="handleImportFile"
+      :error-message="store.error"
+      @imported="handleImported"
+    />
 
     <form class="flex gap-2" @submit.prevent="handleSearchSubmit">
       <InputText
@@ -99,7 +174,7 @@ function goToNextPage(): void {
       <Button type="submit" label="Buscar" severity="secondary" />
     </form>
 
-    <p v-if="store.error" class="text-sm text-danger">{{ store.error }}</p>
+    <Message v-if="store.error" severity="error" :closable="false">{{ store.error }}</Message>
 
     <div class="overflow-x-auto rounded-lg border border-black/10 dark:border-white/10">
       <table class="w-full text-left text-sm">
@@ -110,18 +185,20 @@ function goToNextPage(): void {
               :key="header.id"
               class="px-4 py-2 font-medium text-text-secondary"
             >
-              <FlexRender
-                v-if="!header.isPlaceholder"
-                :render="header.column.columnDef.header"
-                :props="header.getContext()"
-              />
+              <SortableHeader :header="header" />
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="store.items.length === 0">
-            <td colspan="5" class="px-4 py-6 text-center text-text-secondary">
-              {{ store.isLoading ? 'Carregando...' : 'Nenhum fornecedor encontrado.' }}
+          <TableSkeleton v-if="store.isLoading && store.items.length === 0" :columns="5" />
+          <tr v-else-if="store.items.length === 0">
+            <td colspan="5">
+              <EmptyState
+                :icon="Truck"
+                message="Nenhum fornecedor encontrado."
+                action-label="Novo Fornecedor"
+                @action="goToNewSupplier"
+              />
             </td>
           </tr>
           <tr

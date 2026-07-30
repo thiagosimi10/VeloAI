@@ -33,6 +33,7 @@ class GetDashboardSummaryUseCase:
             total_products = await repository.count_products()
             total_services = await repository.count_services()
             orders_by_status = await repository.count_orders_by_status()
+            sales_by_status = await repository.count_sales_by_status()
 
             revenue_this_month, sales_count_this_month = await repository.sum_revenue_between(
                 this_month_start, next_month_start
@@ -71,6 +72,7 @@ class GetDashboardSummaryUseCase:
             total_products=total_products,
             total_services=total_services,
             orders_by_status=orders_by_status,
+            sales_by_status=sales_by_status,
             revenue_this_month=revenue_this_month,
             revenue_last_month=revenue_last_month,
             revenue_change_percentage=revenue_change_percentage,

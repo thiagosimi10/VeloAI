@@ -1,23 +1,34 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
-import InputNumber from 'primevue/inputnumber'
+import DatePicker from 'primevue/datepicker'
 import Message from 'primevue/message'
 import Select from 'primevue/select'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+import MoneyInput from '@/components/form/MoneyInput.vue'
 import { type AccountPayableFormPayload, useAccountsPayableStore } from '@/stores/accountsPayable'
 import { useSuppliersStore } from '@/stores/suppliers'
+import { dateToIsoString, isoStringToDate } from '@/utils/date'
 
 const store = useAccountsPayableStore()
 const suppliersStore = useSuppliersStore()
 const router = useRouter()
+const toast = useToast()
 const isLoading = ref(false)
 
 const form = reactive<AccountPayableFormPayload>({
   supplierId: '',
   dueDate: '',
   amount: 0,
+})
+
+const dueDate = computed<Date | null>({
+  get: () => isoStringToDate(form.dueDate),
+  set: (value) => {
+    form.dueDate = dateToIsoString(value)
+  },
 })
 
 const supplierOptions = computed(() =>
@@ -34,6 +45,7 @@ async function handleSubmit(): Promise<void> {
   isLoading.value = false
 
   if (result) {
+    toast.add({ severity: 'success', summary: 'Conta a pagar criada', life: 3000 })
     await router.push({ name: 'accounts-payable-detail', params: { id: result.id } })
   }
 }
@@ -66,25 +78,20 @@ async function handleSubmit(): Promise<void> {
           <label for="payable-due-date" class="text-sm font-medium text-text-primary dark:text-white">
             Vencimento
           </label>
-          <input
-            id="payable-due-date"
-            v-model="form.dueDate"
-            type="date"
-            class="w-full rounded-md border border-black/10 px-3 py-2 text-sm dark:border-white/10 dark:bg-transparent"
+          <DatePicker
+            v-model="dueDate"
+            input-id="payable-due-date"
+            date-format="dd/mm/yy"
+            show-icon
+            icon-display="input"
+            class="w-full"
           />
         </div>
         <div class="space-y-1">
           <label for="payable-amount" class="text-sm font-medium text-text-primary dark:text-white">
             Valor
           </label>
-          <InputNumber
-            v-model="form.amount"
-            input-id="payable-amount"
-            mode="currency"
-            currency="BRL"
-            locale="pt-BR"
-            class="w-full"
-          />
+          <MoneyInput id="payable-amount" v-model="form.amount" class="w-full" />
         </div>
       </div>
 

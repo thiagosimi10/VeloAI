@@ -17,6 +17,7 @@ class DashboardSummaryResponse(BaseModel):
     total_products: int
     total_services: int
     orders_by_status: dict[str, int]
+    sales_by_status: dict[str, int]
     revenue_this_month: Decimal
     revenue_last_month: Decimal
     revenue_change_percentage: Decimal | None
@@ -38,3 +39,19 @@ class TopProductItem(BaseModel):
     product_id: uuid.UUID
     name: str
     quantity_sold: int
+
+
+class NewCustomersTimeSeriesPoint(BaseModel):
+    period: str
+    count: int
+
+
+class CashFlowTimeSeriesPoint(BaseModel):
+    period: str
+    cash_in: Decimal
+    cash_out: Decimal
+
+
+class CategoryProductCount(BaseModel):
+    category_name: str
+    product_count: int

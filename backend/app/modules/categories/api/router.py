@@ -6,11 +6,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
+from veloai_shared.exceptions import ValidationError
 from veloai_shared.responses import SuccessResponse
 
 from app.core.database import TenantConnectionManager, get_tenant_connection_manager
 from app.core.dependencies import CurrentUser, require_permission
+from app.core.import_result import ImportResultResponse, to_import_result_response
 from app.modules.categories.permissions import (
     CATEGORIES_CREATE,
     CATEGORIES_DELETE,
@@ -26,10 +28,13 @@ from app.modules.categories.schemas.category import (
 from app.modules.categories.use_cases.create_category_use_case import CreateCategoryUseCase
 from app.modules.categories.use_cases.delete_category_use_case import DeleteCategoryUseCase
 from app.modules.categories.use_cases.get_category_use_case import GetCategoryUseCase
+from app.modules.categories.use_cases.import_categories_use_case import ImportCategoriesUseCase
 from app.modules.categories.use_cases.list_categories_use_case import ListCategoriesUseCase
 from app.modules.categories.use_cases.update_category_use_case import UpdateCategoryUseCase
 
 router = APIRouter(prefix="/categories", tags=["categories"])
+
+_MAX_IMPORT_FILE_SIZE_BYTES = 5 * 1024 * 1024
 
 
 @router.get("")
@@ -78,6 +83,32 @@ async def create_category(
         payload=payload,
     )
     return SuccessResponse(message="Categoria criada com sucesso.", data=category)
+
+
+@router.post("/import")
+async def import_categories(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(require_permission(CATEGORIES_CREATE)),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[ImportResultResponse]:
+    data = await file.read()
+    if len(data) > _MAX_IMPORT_FILE_SIZE_BYTES:
+        raise ValidationError(
+            "Arquivo muito grande. O limite é 5MB.", code="IMPORT_FILE_TOO_LARGE"
+        )
+
+    use_case = ImportCategoriesUseCase(connection_manager=connection_manager)
+    result = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        actor_user_id=current_user.user_id,
+        filename=file.filename or "arquivo",
+        data=data,
+    )
+    return SuccessResponse(
+        message=f"{result.created} de {result.total_rows} categoria(s) importada(s).",
+        data=to_import_result_response(result),
+    )
 
 
 @router.patch("/{category_id}")

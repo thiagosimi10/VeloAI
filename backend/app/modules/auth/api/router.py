@@ -5,8 +5,8 @@ HttpOnly (17-FRONTEND-ARCHITECTURE.md, 29-SECURITY.md)."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response
-from veloai_shared.exceptions import AuthenticationError
+from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
+from veloai_shared.exceptions import AuthenticationError, ValidationError
 from veloai_shared.responses import SuccessResponse
 
 from app.core.config import Settings, get_settings
@@ -18,16 +18,35 @@ from app.core.dependencies import (
     get_current_user,
     get_token_service,
 )
-from app.core.rate_limit import LoginRateLimiter, get_login_rate_limiter
-from app.modules.auth.schemas.auth import ChangePasswordRequest, LoginRequest, MeResponse
+from app.core.provisioning_client import ProvisioningClient, get_provisioning_client
+from app.core.rate_limit import (
+    LoginRateLimiter,
+    SignupRateLimiter,
+    get_login_rate_limiter,
+    get_signup_rate_limiter,
+)
+from app.core.storage import StorageClient, get_storage_client
+from app.modules.auth.schemas.auth import (
+    ChangePasswordRequest,
+    LoginRequest,
+    MeResponse,
+    SignupRequest,
+    UpdateProfileRequest,
+)
 from app.modules.auth.services.token_service import TokenService
+from app.modules.auth.use_cases._helpers import resolve_avatar_url
 from app.modules.auth.use_cases.change_password_use_case import ChangePasswordUseCase
 from app.modules.auth.use_cases.login_use_case import LoginUseCase
 from app.modules.auth.use_cases.logout_use_case import LogoutUseCase
 from app.modules.auth.use_cases.me_use_case import MeUseCase
 from app.modules.auth.use_cases.refresh_use_case import RefreshUseCase
+from app.modules.auth.use_cases.signup_use_case import SignupUseCase
+from app.modules.auth.use_cases.update_profile_use_case import UpdateProfileUseCase
+from app.modules.auth.use_cases.upload_avatar_use_case import UploadAvatarUseCase
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+_MAX_AVATAR_FILE_SIZE_BYTES = 2 * 1024 * 1024
 
 
 def _set_auth_cookies(
@@ -67,12 +86,14 @@ async def login(
     connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
     token_service: TokenService = Depends(get_token_service),
     rate_limiter: LoginRateLimiter = Depends(get_login_rate_limiter),
+    storage_client: StorageClient = Depends(get_storage_client),
 ) -> SuccessResponse[MeResponse]:
     use_case = LoginUseCase(
         settings=settings,
         connection_manager=connection_manager,
         token_service=token_service,
         rate_limiter=rate_limiter,
+        storage_client=storage_client,
     )
     result = await use_case.execute(
         email=payload.email,
@@ -98,6 +119,55 @@ async def login(
             role=result.role,
             permissions=result.permissions,
             must_change_password=result.must_change_password,
+            tenant_name=result.tenant_name,
+            avatar_url=result.avatar_url,
+        ),
+    )
+
+
+@router.post("/signup")
+async def signup(
+    payload: SignupRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+    token_service: TokenService = Depends(get_token_service),
+    provisioning_client: ProvisioningClient = Depends(get_provisioning_client),
+    rate_limiter: SignupRateLimiter = Depends(get_signup_rate_limiter),
+) -> SuccessResponse[MeResponse]:
+    use_case = SignupUseCase(
+        settings=settings,
+        connection_manager=connection_manager,
+        token_service=token_service,
+        provisioning_client=provisioning_client,
+        rate_limiter=rate_limiter,
+    )
+    result = await use_case.execute(
+        payload=payload,
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    _set_auth_cookies(
+        response,
+        settings=settings,
+        access_token=result.access_token,
+        refresh_token=result.refresh_token,
+    )
+
+    return SuccessResponse(
+        message="Conta criada com sucesso.",
+        data=MeResponse(
+            id=result.user_id,
+            email=result.email,
+            first_name=result.first_name,
+            last_name=result.last_name,
+            role=result.role,
+            permissions=result.permissions,
+            must_change_password=result.must_change_password,
+            tenant_name=result.tenant_name,
+            avatar_url=result.avatar_url,
         ),
     )
 
@@ -154,8 +224,9 @@ async def logout(
 async def me(
     current_user: CurrentUser = Depends(get_current_user),
     connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+    storage_client: StorageClient = Depends(get_storage_client),
 ) -> SuccessResponse[MeResponse]:
-    use_case = MeUseCase(connection_manager=connection_manager)
+    use_case = MeUseCase(connection_manager=connection_manager, storage_client=storage_client)
     result = await use_case.execute(
         tenant_id=current_user.tenant_id,
         database_name=current_user.database_name,
@@ -172,6 +243,8 @@ async def me(
             role=result.role,
             permissions=result.permissions,
             must_change_password=result.must_change_password,
+            tenant_name=result.tenant_name,
+            avatar_url=result.avatar_url,
         ),
     )
 
@@ -192,3 +265,47 @@ async def change_password(
     )
 
     return SuccessResponse(message="Senha atualizada com sucesso.", data={})
+
+
+@router.patch("/profile")
+async def update_profile(
+    payload: UpdateProfileRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+) -> SuccessResponse[dict[str, str]]:
+    use_case = UpdateProfileUseCase(connection_manager=connection_manager)
+    await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        user_id=current_user.user_id,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+    )
+
+    return SuccessResponse(message="Perfil atualizado com sucesso.", data={})
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(get_current_user),
+    connection_manager: TenantConnectionManager = Depends(get_tenant_connection_manager),
+    storage_client: StorageClient = Depends(get_storage_client),
+) -> SuccessResponse[dict[str, str | None]]:
+    data = await file.read()
+    if len(data) > _MAX_AVATAR_FILE_SIZE_BYTES:
+        raise ValidationError("Imagem muito grande. O limite é 2MB.", code="AVATAR_FILE_TOO_LARGE")
+
+    use_case = UploadAvatarUseCase(
+        connection_manager=connection_manager, storage_client=storage_client
+    )
+    avatar_key = await use_case.execute(
+        tenant_id=current_user.tenant_id,
+        database_name=current_user.database_name,
+        user_id=current_user.user_id,
+        content_type=file.content_type or "application/octet-stream",
+        data=data,
+    )
+    avatar_url = await resolve_avatar_url(storage_client, avatar_key)
+
+    return SuccessResponse(message="Foto atualizada com sucesso.", data={"avatar_url": avatar_url})

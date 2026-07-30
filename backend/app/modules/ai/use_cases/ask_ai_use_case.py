@@ -25,6 +25,7 @@ from app.core.ai_gateway_client import (
     FunctionCall,
     ToolDeclaration,
 )
+from app.core.ai_uploads import AiUploadStore
 from app.core.audit import record_audit_log
 from app.core.database import TenantConnectionManager
 from app.modules.ai.repositories.ai_action_repository import AiActionRepository
@@ -52,10 +53,15 @@ class _AnswerOutcome:
 
 class AskAIUseCase:
     def __init__(
-        self, *, connection_manager: TenantConnectionManager, ai_gateway_client: AIGatewayClient
+        self,
+        *,
+        connection_manager: TenantConnectionManager,
+        ai_gateway_client: AIGatewayClient,
+        ai_upload_store: AiUploadStore | None = None,
     ) -> None:
         self._connections = connection_manager
         self._ai_gateway = ai_gateway_client
+        self._ai_uploads = ai_upload_store
 
     async def execute(
         self,
@@ -65,6 +71,7 @@ class AskAIUseCase:
         actor_user_id: uuid.UUID,
         role: str,
         prompt: str,
+        upload_id: str | None = None,
     ) -> AskAIResponse:
         user = await GetUserUseCase(connection_manager=self._connections).execute(
             tenant_id=tenant_id, database_name=database_name, user_id=actor_user_id
@@ -87,9 +94,26 @@ class AskAIUseCase:
             for tool in get_tools_for_permissions(permissions)
         ]
 
+        effective_prompt = prompt
+        if upload_id is not None and self._ai_uploads is not None:
+            preview = await self._ai_uploads.preview(tenant_id=str(tenant_id), upload_id=upload_id)
+            if preview is not None:
+                effective_prompt = (
+                    f"{prompt}\n\n"
+                    f"[Arquivo anexado pelo usuário: \"{preview['filename']}\", "
+                    f'upload_id="{upload_id}", {preview["row_count"]} linha(s), '
+                    f'colunas encontradas: {", ".join(preview["headers"]) or "nenhuma"}. '
+                    "Se o usuário pedir para importar dados a partir deste arquivo, "
+                    "decida pelo texto do pedido e pelas colunas acima qual é o tipo de "
+                    "registro (produtos, clientes, fornecedores ou categorias) e chame a "
+                    "Tool de importação correspondente (ImportProductsFromFile, "
+                    "ImportCustomersFromFile, ImportSuppliersFromFile ou "
+                    "ImportCategoriesFromFile) passando este upload_id.]"
+                )
+
         started_at = time.perf_counter()
         first_result = await self._ai_gateway.generate(
-            prompt, system_prompt=system_prompt, tools=tool_declarations or None
+            effective_prompt, system_prompt=system_prompt, tools=tool_declarations or None
         )
 
         function_call = first_result.function_call

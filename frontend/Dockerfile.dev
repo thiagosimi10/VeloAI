@@ -1,0 +1,15 @@
+# syntax=docker/dockerfile:1
+# Imagem de desenvolvimento: roda o servidor do Vite com hot-reload de verdade,
+# diferente do frontend/Dockerfile (que builda uma vez e serve estático via nginx).
+# Código-fonte é montado como volume pelo docker-compose.override.yml, nunca copiado
+# aqui — por isso não há COPY do restante do projeto, só do que é preciso para
+# instalar as dependências antes do volume entrar.
+FROM node:22-slim
+WORKDIR /srv/frontend
+
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+
+EXPOSE 5173
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

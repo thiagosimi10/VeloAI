@@ -114,6 +114,9 @@ interface PaginationMeta {
 interface AdminState {
   summary: AdminSummary | null
   tenants: TenantOverview[]
+  tenantsMeta: PaginationMeta
+  tenantsSearch: string
+  tenantsPage: number
   auditLog: AuditLogEntry[]
   auditLogMeta: PaginationMeta
   isLoading: boolean
@@ -186,6 +189,9 @@ export const useAdminStore = defineStore('admin', {
   state: (): AdminState => ({
     summary: null,
     tenants: [],
+    tenantsMeta: { page: 1, page_size: 20, total: 0, pages: 0 },
+    tenantsSearch: '',
+    tenantsPage: 1,
     auditLog: [],
     auditLogMeta: { page: 1, page_size: 20, total: 0, pages: 0 },
     isLoading: false,
@@ -211,13 +217,31 @@ export const useAdminStore = defineStore('admin', {
       this.error = null
 
       try {
-        const response = await http.get<{ data: RawTenantOverview[] }>('/api/v1/admin/tenants')
+        const response = await http.get<{ data: RawTenantOverview[]; meta: PaginationMeta }>(
+          '/api/v1/admin/tenants',
+          {
+            params: {
+              search: this.tenantsSearch || undefined,
+              page: this.tenantsPage,
+            },
+          },
+        )
         this.tenants = response.data.data.map(mapTenant)
+        this.tenantsMeta = response.data.meta
       } catch (error) {
         this.error = extractErrorMessage(error)
       } finally {
         this.isLoading = false
       }
+    },
+
+    setTenantsSearch(search: string): void {
+      this.tenantsSearch = search
+      this.tenantsPage = 1
+    },
+
+    setTenantsPage(page: number): void {
+      this.tenantsPage = page
     },
 
     async createTenant(payload: CreateTenantPayload): Promise<TenantProvisioned | null> {

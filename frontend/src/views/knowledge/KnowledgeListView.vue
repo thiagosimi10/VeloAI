@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { Trash2 } from 'lucide-vue-next'
+import { BookOpen, Trash2 } from 'lucide-vue-next'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import Textarea from 'primevue/textarea'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
 import { computed, onMounted, reactive } from 'vue'
 
+import EmptyState from '@/components/data/EmptyState.vue'
 import { useKnowledgeStore } from '@/stores/knowledge'
 
 const store = useKnowledgeStore()
+const confirm = useConfirm()
+const toast = useToast()
 
 const documentForm = reactive({
   title: '',
@@ -28,18 +33,32 @@ async function handleCreateDocument(): Promise<void> {
   if (result) {
     documentForm.title = ''
     documentForm.content = ''
+    toast.add({ severity: 'success', summary: 'Documento adicionado', life: 3000 })
     await store.fetchDocuments()
   }
 }
 
-async function handleDelete(id: string, title: string): Promise<void> {
-  if (!window.confirm(`Remover "${title}" da base de conhecimento?`)) {
-    return
-  }
-  const success = await store.deleteDocument(id)
-  if (success) {
-    await store.fetchDocuments()
-  }
+function handleDelete(id: string, title: string): void {
+  confirm.require({
+    header: 'Remover documento',
+    message: `Remover "${title}" da base de conhecimento? Esta ação não pode ser desfeita.`,
+    acceptProps: { label: 'Remover', severity: 'danger' },
+    rejectProps: { label: 'Cancelar', severity: 'secondary', variant: 'outlined' },
+    accept: async () => {
+      const success = await store.deleteDocument(id)
+      if (success) {
+        toast.add({ severity: 'success', summary: 'Documento removido', life: 3000 })
+        await store.fetchDocuments()
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: 'Não foi possível remover',
+          detail: store.error ?? undefined,
+          life: 4000,
+        })
+      }
+    },
+  })
 }
 
 const hasPreviousPage = computed(() => store.meta.page > 1)
@@ -80,7 +99,19 @@ function goToNextPage(): void {
       <Button type="submit" label="Adicionar" data-testid="knowledge-document-submit" />
     </form>
 
-    <ul v-if="store.items.length > 0" class="space-y-2">
+    <div v-if="store.isLoading && store.items.length === 0" class="space-y-2">
+      <div
+        v-for="n in 3"
+        :key="n"
+        class="h-20 animate-pulse rounded-lg border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5"
+      />
+    </div>
+    <EmptyState
+      v-else-if="store.items.length === 0"
+      :icon="BookOpen"
+      message="Nenhum documento cadastrado."
+    />
+    <ul v-else class="space-y-2">
       <li
         v-for="document in store.items"
         :key="document.id"
@@ -103,9 +134,6 @@ function goToNextPage(): void {
         </div>
       </li>
     </ul>
-    <p v-else class="text-sm text-text-secondary">
-      {{ store.isLoading ? 'Carregando...' : 'Nenhum documento cadastrado.' }}
-    </p>
 
     <div class="flex items-center justify-between text-sm text-text-secondary">
       <span>{{ store.meta.total }} documento(s)</span>

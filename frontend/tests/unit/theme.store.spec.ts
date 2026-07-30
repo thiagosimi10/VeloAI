@@ -10,7 +10,17 @@ describe('theme store', () => {
     document.documentElement.classList.remove('dark')
   })
 
-  it('defaults to light theme when nothing is stored and no dark preference', () => {
+  it('defaults to dark theme when nothing is stored', () => {
+    const store = useThemeStore()
+
+    store.initialize()
+
+    expect(store.mode).toBe('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+  })
+
+  it('reads a previously persisted light theme', () => {
+    localStorage.setItem('veloai:theme', 'light')
     const store = useThemeStore()
 
     store.initialize()
@@ -29,19 +39,19 @@ describe('theme store', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 
-  it('toggle switches between light and dark and persists the choice', () => {
+  it('toggle switches between dark and light and persists the choice', () => {
     const store = useThemeStore()
     store.initialize()
-
-    store.toggle()
-    expect(store.mode).toBe('dark')
-    expect(localStorage.getItem('veloai:theme')).toBe('dark')
-    expect(document.documentElement.classList.contains('dark')).toBe(true)
 
     store.toggle()
     expect(store.mode).toBe('light')
     expect(localStorage.getItem('veloai:theme')).toBe('light')
     expect(document.documentElement.classList.contains('dark')).toBe(false)
+
+    store.toggle()
+    expect(store.mode).toBe('dark')
+    expect(localStorage.getItem('veloai:theme')).toBe('dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 
   it('setTheme applies an explicit theme', () => {
