@@ -4,7 +4,7 @@
 # Código-fonte é montado como volume pelo docker-compose.override.yml, nunca copiado
 # aqui — por isso não há COPY do restante do projeto, só do que é preciso para
 # instalar as dependências antes do volume entrar.
-FROM node:22-slim
+FROM node:25-slim
 WORKDIR /srv/frontend
 
 COPY frontend/package.json frontend/package-lock.json* ./
